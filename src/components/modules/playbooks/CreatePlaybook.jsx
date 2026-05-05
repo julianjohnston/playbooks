@@ -119,6 +119,7 @@ const MODES = [
     glowHover: 'rgba(124,92,252,0.12)',
     title: 'Start from a Template',
     description: 'Start with a proven strategy pre-configured with best practices. Customize to match your needs.',
+    comingSoon: true,
   },
   {
     id: 'conversation',
@@ -131,6 +132,7 @@ const MODES = [
     glowHover: 'rgba(45,212,191,0.08)',
     title: 'Start with a Conversation',
     description: 'Conversational AI-guided setup without step-by-step forms. Natural configuration flow for faster creation.',
+    comingSoon: true,
   },
   {
     id: 'scratch',
@@ -150,8 +152,9 @@ const MODES = [
 function ModeCard({ mode, selected, onSelect }) {
   const [hovered, setHovered] = useState(false)
   const Icon = mode.icon
-  const isActive  = selected === mode.id
-  const isHovered = hovered && !isActive
+  const comingSoon = !!mode.comingSoon
+  const isActive  = !comingSoon && selected === mode.id
+  const isHovered = !comingSoon && hovered && !isActive
 
   const borderColor = isActive ? mode.borderActive : isHovered ? mode.borderHover : 'rgba(255,255,255,0.09)'
   const boxShadow   = isActive
@@ -162,18 +165,32 @@ function ModeCard({ mode, selected, onSelect }) {
 
   return (
     <button
-      className="flex-1 flex flex-col items-start gap-4 p-6 rounded-2xl text-left transition-all duration-200 cursor-pointer relative"
-      style={{ background: isActive ? 'rgba(255,255,255,0.045)' : isHovered ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.02)', border: `1.5px solid ${borderColor}`, boxShadow, outline: 'none' }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onClick={() => onSelect(mode.id)}>
+      disabled={comingSoon}
+      aria-disabled={comingSoon || undefined}
+      title={comingSoon ? 'Coming soon' : undefined}
+      className={`flex-1 flex flex-col items-start gap-4 p-6 rounded-2xl text-left transition-all duration-200 relative ${comingSoon ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+      style={{ background: isActive ? 'rgba(255,255,255,0.045)' : isHovered ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.02)', border: `1.5px solid ${borderColor}`, boxShadow, outline: 'none', opacity: comingSoon ? 0.5 : 1 }}
+      onMouseEnter={() => !comingSoon && setHovered(true)}
+      onMouseLeave={() => !comingSoon && setHovered(false)}
+      onClick={() => !comingSoon && onSelect(mode.id)}>
       {isActive && (
         <div className="absolute top-3 right-3">
           <CheckCircle size={16} style={{ color: mode.iconColor }} />
         </div>
       )}
+      {comingSoon && (
+        <span
+          className="absolute top-3 right-3 text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded"
+          style={{
+            color: '#fbbf24',
+            background: 'rgba(251,191,36,0.12)',
+            border: '1px solid rgba(251,191,36,0.3)',
+          }}>
+          Coming soon
+        </span>
+      )}
       <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200"
-        style={{ background: isActive || isHovered ? mode.iconBg : 'rgba(255,255,255,0.06)', boxShadow: isActive ? `0 4px 16px ${mode.glowActive}` : 'none' }}>
+        style={{ background: isActive || isHovered ? mode.iconBg : 'rgba(255,255,255,0.06)', boxShadow: isActive ? `0 4px 16px ${mode.glowActive}` : 'none', filter: comingSoon ? 'grayscale(0.4)' : 'none' }}>
         <Icon size={20} style={{ color: isActive || isHovered ? '#fff' : mode.iconColor }} strokeWidth={isActive ? 2.2 : 1.8} />
       </div>
       <div>
