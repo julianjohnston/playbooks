@@ -696,14 +696,28 @@ export default function Playbooks() {
                   <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }} />
                   <button
                     type="button"
-                    onClick={() => { setCreateMenuOpen(false); navigate('/playbooks/create?type=internal') }}
-                    className="w-full text-left p-4 transition-colors hover:bg-white/5 flex items-start gap-3">
+                    disabled
+                    aria-disabled="true"
+                    title="Coming soon"
+                    className="w-full text-left p-4 flex items-start gap-3 cursor-not-allowed"
+                    style={{ opacity: 0.5 }}>
                     <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ background: 'linear-gradient(135deg,#a78bfa,#7c5cfc)', boxShadow: '0 4px 12px rgba(124,92,252,0.3)' }}>
+                      style={{ background: 'linear-gradient(135deg,#a78bfa,#7c5cfc)', filter: 'grayscale(0.4)' }}>
                       <Shield size={16} color="#fff" />
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>Internal Playbook</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>Internal Playbook</p>
+                        <span
+                          className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded"
+                          style={{
+                            color: '#fbbf24',
+                            background: 'rgba(251,191,36,0.12)',
+                            border: '1px solid rgba(251,191,36,0.3)',
+                          }}>
+                          Coming soon
+                        </span>
+                      </div>
                       <p className="text-[10px] mt-0.5" style={{ color: '#a78bfa' }}>Team · operational</p>
                       <p className="text-[11px] leading-relaxed mt-1.5" style={{ color: 'var(--text-muted)' }}>
                         Standard operating procedures for internal teams and cross-functional workflows
