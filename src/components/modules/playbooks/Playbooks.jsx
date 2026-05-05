@@ -576,6 +576,7 @@ export default function Playbooks() {
   const [previewPb,   setPreviewPb]   = useState(null)
   const [search,      setSearch]      = useState('')
   const [showFilters, setShowFilters] = useState(false)
+  const [createMenuOpen, setCreateMenuOpen] = useState(false)
   const [filters, setFilters] = useState({
     status:     'All',
     department: 'All',
@@ -664,36 +665,54 @@ export default function Playbooks() {
               </p>
             </div>
           </div>
-          <div className="relative group/create">
+          <div className="relative">
             <button
-              onClick={() => navigate('/playbooks/create')}
+              onClick={() => setCreateMenuOpen(o => !o)}
               className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-xl transition-all hover:brightness-110"
               style={{ background: 'linear-gradient(135deg,#7c5cfc,#3b82f6)', color: '#fff', boxShadow: '0 2px 12px rgba(124,92,252,0.35)' }}>
-              <Plus size={14} /> Create client playbook <ChevronRight size={13} />
+              <Plus size={14} /> Create playbook <ChevronRight size={13} className={createMenuOpen ? 'rotate-90 transition-transform' : 'transition-transform'} />
             </button>
-            <div className="absolute right-0 top-full mt-2.5 z-50 w-72 rounded-2xl pointer-events-none
-              opacity-0 translate-y-1 group-hover/create:opacity-100 group-hover/create:translate-y-0
-              transition-all duration-200"
-              style={{ background: 'var(--slideout-bg)', border: '1px solid rgba(59,130,246,0.35)', boxShadow: '0 12px 40px rgba(0,0,0,0.5)' }}>
-              <div className="p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: 'linear-gradient(135deg,#3b82f6,#7c5cfc)', boxShadow: '0 4px 12px rgba(59,130,246,0.3)' }}>
-                    <Zap size={16} color="#fff" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>Client Playbooks</p>
-                    <p className="text-[10px] mt-0.5" style={{ color: '#60a5fa' }}>Adaptive · NBA-driven</p>
-                  </div>
+            {createMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setCreateMenuOpen(false)} />
+                <div className="absolute right-0 top-full mt-2.5 z-50 w-72 rounded-2xl overflow-hidden"
+                  style={{ background: 'var(--slideout-bg)', border: '1px solid rgba(59,130,246,0.35)', boxShadow: '0 12px 40px rgba(0,0,0,0.5)' }}>
+                  <button
+                    type="button"
+                    onClick={() => { setCreateMenuOpen(false); navigate('/playbooks/create?type=customer') }}
+                    className="w-full text-left p-4 transition-colors hover:bg-white/5 flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: 'linear-gradient(135deg,#3b82f6,#7c5cfc)', boxShadow: '0 4px 12px rgba(59,130,246,0.3)' }}>
+                      <Users size={16} color="#fff" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>Customer Playbook</p>
+                      <p className="text-[10px] mt-0.5" style={{ color: '#60a5fa' }}>Adaptive · NBA-driven</p>
+                      <p className="text-[11px] leading-relaxed mt-1.5" style={{ color: 'var(--text-muted)' }}>
+                        Adaptive NBA strategies for customer lifecycle engagement and 1:1 plan execution
+                      </p>
+                    </div>
+                  </button>
+                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }} />
+                  <button
+                    type="button"
+                    onClick={() => { setCreateMenuOpen(false); navigate('/playbooks/create?type=internal') }}
+                    className="w-full text-left p-4 transition-colors hover:bg-white/5 flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: 'linear-gradient(135deg,#a78bfa,#7c5cfc)', boxShadow: '0 4px 12px rgba(124,92,252,0.3)' }}>
+                      <Shield size={16} color="#fff" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>Internal Playbook</p>
+                      <p className="text-[10px] mt-0.5" style={{ color: '#a78bfa' }}>Team · operational</p>
+                      <p className="text-[11px] leading-relaxed mt-1.5" style={{ color: 'var(--text-muted)' }}>
+                        Standard operating procedures for internal teams and cross-functional workflows
+                      </p>
+                    </div>
+                  </button>
                 </div>
-                <p className="text-[11px] leading-relaxed mb-3" style={{ color: 'var(--text-muted)' }}>
-                  Adaptive NBA strategies for customer lifecycle engagement and 1:1 plan execution
-                </p>
-                <div className="flex items-center gap-1.5 text-[11px] font-medium" style={{ color: '#60a5fa' }}>
-                  <Zap size={10} /> Dynamic execution based on real-time signals
-                </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         </div>
       </div>
