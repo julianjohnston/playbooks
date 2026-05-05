@@ -84,7 +84,7 @@ const STEP_META = {
 // ── Initial data ──────────────────────────────────────────────────────────────
 const INITIAL = {
   // Basics
-  name: '', description: '', tenantScope: '', department: '', owner: '', priority: '', tags: [], internalNotes: '',
+  name: '', description: '', tenantScope: '', department: '', owner: '', priority: '', exclusiveExecution: false, tags: [], internalNotes: '',
   knowledgePackages: [],
   selectedTenants: [], selectedRooftops: {},
   // Moment
@@ -867,6 +867,45 @@ function BasicsStep({ data, onChange }) {
             ))}
           </div>
         </div>
+      </div>
+
+      <div className="h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+
+      {/* Section 4: Exclusive Execution */}
+      <div>
+        <SectionLabel>Execution Behavior</SectionLabel>
+        <button type="button" role="switch" aria-checked={data.exclusiveExecution}
+          onClick={() => set('exclusiveExecution', !data.exclusiveExecution)}
+          className="w-full flex items-center gap-4 p-4 rounded-xl text-left transition-all"
+          style={{
+            background: data.exclusiveExecution ? 'rgba(124,92,252,0.08)' : 'rgba(255,255,255,0.02)',
+            border: `1px solid ${data.exclusiveExecution ? 'rgba(124,92,252,0.4)' : 'rgba(255,255,255,0.07)'}`,
+          }}>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Exclusive execution</p>
+            <p className="text-[11px] leading-relaxed mt-1" style={{ color: 'var(--text-muted)' }}>
+              When on, this playbook runs alone. If another playbook is already active for the same customer, this one will wait rather than run alongside it.
+            </p>
+          </div>
+          <div className="relative shrink-0 transition-colors duration-150"
+            style={{
+              width: 36,
+              height: 20,
+              borderRadius: 999,
+              background: data.exclusiveExecution ? '#7c5cfc' : 'rgba(255,255,255,0.12)',
+              boxShadow: data.exclusiveExecution ? '0 0 0 1px rgba(124,92,252,0.6), 0 2px 8px rgba(124,92,252,0.35)' : 'inset 0 0 0 1px rgba(255,255,255,0.08)',
+            }}>
+            <div className="absolute top-0.5 transition-all duration-150"
+              style={{
+                left: data.exclusiveExecution ? 18 : 2,
+                width: 16,
+                height: 16,
+                borderRadius: 999,
+                background: '#fff',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
+              }} />
+          </div>
+        </button>
       </div>
 
       <div className="h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
