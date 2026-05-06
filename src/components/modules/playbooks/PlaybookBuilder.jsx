@@ -3175,11 +3175,14 @@ function PhasesStep({ data, onChange }) {
                                   <p className="text-[10px] font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Fixed content</p>
                                   <textarea
                                     className="input-base w-full text-xs resize-none leading-relaxed"
-                                    rows={3}
-                                    placeholder="Enter the fixed content this slot will use..."
+                                    rows={4}
+                                    placeholder="Write your fixed content and insert [agent content] wherever you want the agent to generate."
                                     value={slot.fixedContent || ''}
                                     onChange={e => updateActionSlot(phase.id, slot.id, { fixedContent: e.target.value })}
                                   />
+                                  <p className="text-[10px] mt-1.5 leading-relaxed" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                                    The fixed parts are sent exactly as written. The <span style={{ fontFamily: 'JetBrains Mono, monospace', color: '#a78bfa' }}>[agent content]</span> tag is replaced by agent-generated output at send time.
+                                  </p>
                                 </div>
                               )}
                             </div>
