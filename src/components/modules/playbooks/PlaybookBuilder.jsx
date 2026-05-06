@@ -2723,6 +2723,157 @@ const PHASES_TEMPLATES = [
 ]
 function getPhaseType(id) { return PHASE_TYPES.find(t => t.id === id) || PHASE_TYPES[4] }
 
+// ── Action Slots block (shared between Sequential + Signal phase cards) ──────
+function ActionSlotsBlock({ slots, onAdd, onRemove, onUpdate }) {
+  return (
+    <div className="space-y-3">
+      <p className="text-[11px] font-bold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
+        Action Slots
+      </p>
+
+      {(slots || []).length > 0 && (
+        <div className="space-y-2">
+          {(slots || []).map((slot, idx) => (
+            <div key={slot.id} className="rounded-lg p-3 space-y-2.5"
+              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }}>
+
+              {/* Slot name + remove */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  className="input-base flex-1 text-xs"
+                  placeholder={`Slot ${idx + 1} name...`}
+                  value={slot.name || ''}
+                  onChange={e => onUpdate(slot.id, { name: e.target.value })}
+                />
+                <button type="button" onClick={() => onRemove(slot.id)}
+                  className="shrink-0 transition-opacity hover:opacity-80"
+                  title="Remove slot"
+                  style={{ color: 'rgba(248,113,113,0.7)' }}>
+                  <Trash2 size={12} />
+                </button>
+              </div>
+
+              {/* Action timing */}
+              <div>
+                <p className="text-[10px] font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Action timing</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    className="input-base text-xs"
+                    style={{ width: 90 }}
+                    placeholder="0"
+                    value={slot.timingValue ?? ''}
+                    onChange={e => {
+                      const raw = e.target.value
+                      onUpdate(slot.id, {
+                        timingValue: raw === '' ? '' : Math.max(0, parseInt(raw, 10) || 0),
+                      })
+                    }}
+                  />
+                  <select className="input-base text-xs flex-1"
+                    value={slot.timingUnit || 'minutes'}
+                    onChange={e => onUpdate(slot.id, { timingUnit: e.target.value })}>
+                    <option value="minutes">minutes</option>
+                    <option value="hours">hours</option>
+                    <option value="days">days</option>
+                  </select>
+                </div>
+                <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                  {idx === 0 ? 'Relative to phase start.' : 'Relative to when the previous slot sends.'}
+                </p>
+                <p className="text-[10px] mt-1.5 leading-relaxed" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  Defines when this action is allowed. Agent may adjust based on caps, quiet hours, consent, and engagement.
+                </p>
+              </div>
+
+              {/* Content mode selector */}
+              <div>
+                <p className="text-[10px] font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Content mode</p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { id: 'template', label: 'Template' },
+                    { id: 'hybrid',   label: 'Hybrid' },
+                    { id: 'generate', label: 'Generate' },
+                  ].map(m => {
+                    const active = (slot.mode || 'template') === m.id
+                    return (
+                      <button key={m.id} type="button"
+                        onClick={() => onUpdate(slot.id, { mode: m.id })}
+                        className="px-2 py-1.5 rounded-md text-[11px] font-semibold transition-all"
+                        style={{
+                          background: active ? 'rgba(124,92,252,0.15)' : 'rgba(255,255,255,0.03)',
+                          border: `1px solid ${active ? 'rgba(124,92,252,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                          color: active ? '#a78bfa' : 'var(--text-muted)',
+                        }}>
+                        {m.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Template selector — only when mode is Template */}
+              {(slot.mode || 'template') === 'template' && (
+                <div>
+                  <p className="text-[10px] font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Template</p>
+                  <TemplateSelector
+                    templates={TENANT_TEMPLATES}
+                    value={slot.templateId || ''}
+                    onChange={(tplId) => onUpdate(slot.id, { templateId: tplId })}
+                  />
+                </div>
+              )}
+
+              {/* Fixed content — only when Hybrid */}
+              {(slot.mode || 'template') === 'hybrid' && (
+                <div>
+                  <p className="text-[10px] font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Fixed content</p>
+                  <textarea
+                    className="input-base w-full text-xs resize-none leading-relaxed"
+                    rows={4}
+                    placeholder="Write your fixed content and insert [agent content] wherever you want the agent to generate."
+                    value={slot.fixedContent || ''}
+                    onChange={e => onUpdate(slot.id, { fixedContent: e.target.value })}
+                  />
+                  <p className="text-[10px] mt-1.5 leading-relaxed" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                    The fixed parts are sent exactly as written. The <span style={{ fontFamily: 'JetBrains Mono, monospace', color: '#a78bfa' }}>[agent content]</span> tag is replaced by agent-generated output at send time.
+                  </p>
+                </div>
+              )}
+
+              {/* Agent guidance — only when Generate */}
+              {(slot.mode || 'template') === 'generate' && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>Agent guidance</p>
+                    <AIAssistWidget fieldKey="phaseNotes" currentValue={slot.agentGuidance || ''}
+                      onAccept={val => onUpdate(slot.id, { agentGuidance: val })} />
+                  </div>
+                  <textarea
+                    className="input-base w-full text-xs resize-none leading-relaxed"
+                    rows={4}
+                    placeholder="Give the agent specific instruction for this slot — tone, goal, or content direction."
+                    value={slot.agentGuidance || ''}
+                    onChange={e => onUpdate(slot.id, { agentGuidance: e.target.value })}
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <button type="button" onClick={onAdd}
+        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-semibold transition-all hover:brightness-110"
+        style={{ background: 'rgba(124,92,252,0.07)', color: '#a78bfa', border: '1px dashed rgba(124,92,252,0.35)' }}>
+        <Plus size={11} /> Add slot
+      </button>
+    </div>
+  )
+}
+
 // ── Signal phase types ────────────────────────────────────────────────────────
 const SIGNAL_TYPES = [
   { id: 'email-opened',    label: 'Email opened',    icon: MessageSquare, sub: 'Customer opened a sent email'                 },
@@ -2947,11 +3098,42 @@ function PhasesStep({ data, onChange }) {
   const usedSignalIds = signalPhases.map(s => s.signalType).filter(Boolean)
   const addSignalPhaseFromType = (signalTypeId) => {
     const sig = getSignalType(signalTypeId)
-    setSignalPhases([...signalPhases, { id: Date.now(), signalType: signalTypeId, name: sig?.label || 'Signal Phase' }])
+    setSignalPhases([...signalPhases, {
+      id: Date.now(),
+      signalType: signalTypeId,
+      name: sig?.label || 'Signal Phase',
+      goal: '',
+      channels: [],
+      notes: '',
+      actionSlots: [],
+      collapsed: false,
+    }])
     setShowSignalModal(false)
   }
   const removeSignalPhase = (id) => setSignalPhases(signalPhases.filter(s => s.id !== id))
   const updateSignalPhase = (id, patch) => setSignalPhases(signalPhases.map(s => s.id === id ? { ...s, ...patch } : s))
+  const toggleSignalPhaseCollapsed = (id) => updateSignalPhase(id, { collapsed: !signalPhases.find(s => s.id === id)?.collapsed })
+  const toggleSignalChannel = (phaseId, chId) => {
+    const sp = signalPhases.find(s => s.id === phaseId)
+    if (!sp) return
+    const ch = sp.channels || []
+    updateSignalPhase(phaseId, { channels: ch.includes(chId) ? ch.filter(c => c !== chId) : [...ch, chId] })
+  }
+  const addSignalActionSlot = (phaseId) => {
+    const sp = signalPhases.find(s => s.id === phaseId)
+    const slots = sp?.actionSlots || []
+    updateSignalPhase(phaseId, { actionSlots: [...slots, { id: Date.now(), name: '', mode: 'template', fixedContent: '', templateId: '', agentGuidance: '', timingValue: '', timingUnit: 'minutes' }] })
+  }
+  const removeSignalActionSlot = (phaseId, slotId) => {
+    const sp = signalPhases.find(s => s.id === phaseId)
+    const slots = sp?.actionSlots || []
+    updateSignalPhase(phaseId, { actionSlots: slots.filter(s => s.id !== slotId) })
+  }
+  const updateSignalActionSlot = (phaseId, slotId, patch) => {
+    const sp = signalPhases.find(s => s.id === phaseId)
+    const slots = sp?.actionSlots || []
+    updateSignalPhase(phaseId, { actionSlots: slots.map(s => s.id === slotId ? { ...s, ...patch } : s) })
+  }
 
   const addActionSlot = (phaseId) => {
     const phase = phases.find(p => p.id === phaseId)
@@ -3168,151 +3350,12 @@ function PhasesStep({ data, onChange }) {
 
                   {/* Advanced settings — collapsed by default */}
                   <Accordion label="Advanced settings">
-                    <div className="space-y-3">
-                      <p className="text-[11px] font-bold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
-                        Action Slots
-                      </p>
-
-                      {(phase.actionSlots || []).length > 0 && (
-                        <div className="space-y-2">
-                          {(phase.actionSlots || []).map((slot, idx) => (
-                            <div key={slot.id} className="rounded-lg p-3 space-y-2.5"
-                              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }}>
-
-                              {/* Slot name + remove */}
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="text"
-                                  className="input-base flex-1 text-xs"
-                                  placeholder={`Slot ${idx + 1} name...`}
-                                  value={slot.name || ''}
-                                  onChange={e => updateActionSlot(phase.id, slot.id, { name: e.target.value })}
-                                />
-                                <button type="button" onClick={() => removeActionSlot(phase.id, slot.id)}
-                                  className="shrink-0 transition-opacity hover:opacity-80"
-                                  title="Remove slot"
-                                  style={{ color: 'rgba(248,113,113,0.7)' }}>
-                                  <Trash2 size={12} />
-                                </button>
-                              </div>
-
-                              {/* Action timing */}
-                              <div>
-                                <p className="text-[10px] font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Action timing</p>
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    className="input-base text-xs"
-                                    style={{ width: 90 }}
-                                    placeholder="0"
-                                    value={slot.timingValue ?? ''}
-                                    onChange={e => {
-                                      const raw = e.target.value
-                                      updateActionSlot(phase.id, slot.id, {
-                                        timingValue: raw === '' ? '' : Math.max(0, parseInt(raw, 10) || 0),
-                                      })
-                                    }}
-                                  />
-                                  <select className="input-base text-xs flex-1"
-                                    value={slot.timingUnit || 'minutes'}
-                                    onChange={e => updateActionSlot(phase.id, slot.id, { timingUnit: e.target.value })}>
-                                    <option value="minutes">minutes</option>
-                                    <option value="hours">hours</option>
-                                    <option value="days">days</option>
-                                  </select>
-                                </div>
-                                <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
-                                  {idx === 0 ? 'Relative to phase start.' : 'Relative to when the previous slot sends.'}
-                                </p>
-                                <p className="text-[10px] mt-1.5 leading-relaxed" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                                  Defines when this action is allowed. Agent may adjust based on caps, quiet hours, consent, and engagement.
-                                </p>
-                              </div>
-
-                              {/* Content mode selector */}
-                              <div>
-                                <p className="text-[10px] font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Content mode</p>
-                                <div className="grid grid-cols-3 gap-1.5">
-                                  {[
-                                    { id: 'template', label: 'Template' },
-                                    { id: 'hybrid',   label: 'Hybrid' },
-                                    { id: 'generate', label: 'Generate' },
-                                  ].map(m => {
-                                    const active = (slot.mode || 'template') === m.id
-                                    return (
-                                      <button key={m.id} type="button"
-                                        onClick={() => updateActionSlot(phase.id, slot.id, { mode: m.id })}
-                                        className="px-2 py-1.5 rounded-md text-[11px] font-semibold transition-all"
-                                        style={{
-                                          background: active ? 'rgba(124,92,252,0.15)' : 'rgba(255,255,255,0.03)',
-                                          border: `1px solid ${active ? 'rgba(124,92,252,0.5)' : 'rgba(255,255,255,0.08)'}`,
-                                          color: active ? '#a78bfa' : 'var(--text-muted)',
-                                        }}>
-                                        {m.label}
-                                      </button>
-                                    )
-                                  })}
-                                </div>
-                              </div>
-
-                              {/* Template selector — only when mode is Template */}
-                              {(slot.mode || 'template') === 'template' && (
-                                <div>
-                                  <p className="text-[10px] font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Template</p>
-                                  <TemplateSelector
-                                    templates={TENANT_TEMPLATES}
-                                    value={slot.templateId || ''}
-                                    onChange={(tplId) => updateActionSlot(phase.id, slot.id, { templateId: tplId })}
-                                  />
-                                </div>
-                              )}
-
-                              {/* Fixed content — only when Hybrid */}
-                              {(slot.mode || 'template') === 'hybrid' && (
-                                <div>
-                                  <p className="text-[10px] font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Fixed content</p>
-                                  <textarea
-                                    className="input-base w-full text-xs resize-none leading-relaxed"
-                                    rows={4}
-                                    placeholder="Write your fixed content and insert [agent content] wherever you want the agent to generate."
-                                    value={slot.fixedContent || ''}
-                                    onChange={e => updateActionSlot(phase.id, slot.id, { fixedContent: e.target.value })}
-                                  />
-                                  <p className="text-[10px] mt-1.5 leading-relaxed" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                                    The fixed parts are sent exactly as written. The <span style={{ fontFamily: 'JetBrains Mono, monospace', color: '#a78bfa' }}>[agent content]</span> tag is replaced by agent-generated output at send time.
-                                  </p>
-                                </div>
-                              )}
-
-                              {/* Agent guidance — only when Generate */}
-                              {(slot.mode || 'template') === 'generate' && (
-                                <div>
-                                  <div className="flex items-center justify-between mb-1">
-                                    <p className="text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>Agent guidance</p>
-                                    <AIAssistWidget fieldKey="phaseNotes" currentValue={slot.agentGuidance || ''}
-                                      onAccept={val => updateActionSlot(phase.id, slot.id, { agentGuidance: val })} />
-                                  </div>
-                                  <textarea
-                                    className="input-base w-full text-xs resize-none leading-relaxed"
-                                    rows={4}
-                                    placeholder="Give the agent specific instruction for this slot — tone, goal, or content direction."
-                                    value={slot.agentGuidance || ''}
-                                    onChange={e => updateActionSlot(phase.id, slot.id, { agentGuidance: e.target.value })}
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <button type="button" onClick={() => addActionSlot(phase.id)}
-                        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-semibold transition-all hover:brightness-110"
-                        style={{ background: 'rgba(124,92,252,0.07)', color: '#a78bfa', border: '1px dashed rgba(124,92,252,0.35)' }}>
-                        <Plus size={11} /> Add slot
-                      </button>
-                    </div>
+                    <ActionSlotsBlock
+                      slots={phase.actionSlots}
+                      onAdd={() => addActionSlot(phase.id)}
+                      onRemove={(slotId) => removeActionSlot(phase.id, slotId)}
+                      onUpdate={(slotId, patch) => updateActionSlot(phase.id, slotId, patch)}
+                    />
                   </Accordion>
                 </div>
                 )}
@@ -3342,11 +3385,14 @@ function PhasesStep({ data, onChange }) {
           {signalPhases.map((sp) => {
             const sig  = getSignalType(sp.signalType)
             const Icon = sig?.icon
+            const collapsed = !!sp.collapsed
             return (
               <div key={sp.id} className="rounded-xl overflow-hidden"
                 style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
+
+                {/* Card header — signal label, no editable name, no number badge */}
                 <div className="flex items-center gap-3 px-4 py-3"
-                  style={{ background: 'rgba(255,255,255,0.01)' }}>
+                  style={{ borderBottom: collapsed ? 'none' : '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.01)' }}>
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                     style={{ background: 'rgba(45,212,191,0.15)', border: '1px solid rgba(45,212,191,0.3)' }}>
                     {Icon ? <Icon size={13} style={{ color: '#2dd4bf' }} /> : null}
@@ -3357,12 +3403,96 @@ function PhasesStep({ data, onChange }) {
                       <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{sig.sub}</p>
                     )}
                   </div>
+                  <button type="button" onClick={() => toggleSignalPhaseCollapsed(sp.id)}
+                    className="opacity-50 hover:opacity-90 transition-opacity shrink-0"
+                    title={collapsed ? 'Expand phase' : 'Collapse phase'}>
+                    <ChevronDown size={13} style={{ color: 'var(--text-muted)' }}
+                      className={`transition-transform ${collapsed ? '' : 'rotate-180'}`} />
+                  </button>
                   <button type="button" onClick={() => removeSignalPhase(sp.id)}
                     className="opacity-35 hover:opacity-80 transition-opacity shrink-0"
                     title="Remove signal phase">
                     <Trash2 size={12} style={{ color: '#f87171' }} />
                   </button>
                 </div>
+
+                {/* Card body — Phase Goal · Channel Priority · Agent Guidance · Advanced settings */}
+                {!collapsed && (
+                  <div className="px-4 py-4 space-y-4">
+
+                    <div>
+                      <FieldLabel required>Phase Goal</FieldLabel>
+                      <input type="text" className="input-base w-full text-xs"
+                        placeholder="What should this phase achieve when the signal fires?"
+                        value={sp.goal || ''} onChange={e => updateSignalPhase(sp.id, { goal: e.target.value })} />
+                    </div>
+
+                    <div>
+                      <FieldLabel hint="Click channels in order of preference — first selected becomes Priority 1">
+                        Channel Priority
+                      </FieldLabel>
+                      <div className="flex flex-wrap gap-2">
+                        {PHASE_CHANNELS.map(ch => {
+                          const channels = sp.channels || []
+                          const idx      = channels.indexOf(ch.id)
+                          const active   = idx !== -1
+                          const priority = idx + 1
+                          return (
+                            <button key={ch.id} type="button" onClick={() => toggleSignalChannel(sp.id, ch.id)}
+                              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all"
+                              style={{
+                                background: active ? ch.bg : 'rgba(255,255,255,0.04)',
+                                color:      active ? ch.color : 'var(--text-muted)',
+                                border:     `1.5px solid ${active ? ch.border : 'rgba(255,255,255,0.1)'}`,
+                              }}>
+                              {active && (
+                                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold leading-none shrink-0"
+                                  style={{ background: ch.color, color: '#fff' }}>
+                                  {priority}
+                                </span>
+                              )}
+                              {ch.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      {(sp.channels || []).length > 0 && (
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+                          {(sp.channels || []).map((chId, idx) => {
+                            const ch = PHASE_CHANNELS.find(c => c.id === chId)
+                            if (!ch) return null
+                            return (
+                              <span key={chId} className="text-[10px] flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                                <span className="font-bold" style={{ color: ch.color }}>P{idx + 1}</span>
+                                {ch.label}
+                              </span>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <FieldLabel>Agent Guidance</FieldLabel>
+                        <AIAssistWidget fieldKey="phaseNotes" currentValue={sp.notes || ''}
+                          onAccept={val => updateSignalPhase(sp.id, { notes: val })} />
+                      </div>
+                      <textarea className="input-base w-full text-xs resize-none" rows={2}
+                        placeholder="Describe the purpose, tone, and intent of this phase — this becomes the agent's primary instruction for content creation."
+                        value={sp.notes || ''} onChange={e => updateSignalPhase(sp.id, { notes: e.target.value })} />
+                    </div>
+
+                    <Accordion label="Advanced settings">
+                      <ActionSlotsBlock
+                        slots={sp.actionSlots}
+                        onAdd={() => addSignalActionSlot(sp.id)}
+                        onRemove={(slotId) => removeSignalActionSlot(sp.id, slotId)}
+                        onUpdate={(slotId, patch) => updateSignalActionSlot(sp.id, slotId, patch)}
+                      />
+                    </Accordion>
+                  </div>
+                )}
               </div>
             )
           })}
