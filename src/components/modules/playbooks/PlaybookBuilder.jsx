@@ -97,7 +97,7 @@ const INITIAL = {
   gate_compliance_checks: [],
   gate_custom: [],
   // Objective & Success
-  goalType: '', primarySuccessEvent: '', exitConditions: [],
+  goalType: '', primarySuccessEvents: [], exitConditions: [],
   kpiAssociation: '', strategyNotes: '',
   // Phases
   phases: [],
@@ -171,7 +171,7 @@ const SIDEBAR_FIELDS = {
   ],
   objective: [
     { key: 'goalType',            label: 'Goal Type',       required: true  },
-    { key: 'primarySuccessEvent', label: 'Success Event',   required: true  },
+    { key: 'primarySuccessEvents', label: 'Success Events',  required: true  },
     { key: 'exitConditions',      label: 'Exit Conditions', required: false },
     { key: 'kpiAssociation',      label: 'KPI Association', required: false },
     { key: 'strategyNotes',       label: 'Strategy Notes',  required: false },
@@ -1946,6 +1946,28 @@ const NEXT_PLAYBOOKS = [
 function ObjectiveStep({ data, onChange }) {
   const set = (key, val) => onChange({ ...data, [key]: val })
 
+  const [successDropdownOpen, setSuccessDropdownOpen] = useState(false)
+  const successWrapRef = useRef(null)
+  useEffect(() => {
+    if (!successDropdownOpen) return
+    const handler = (e) => {
+      if (successWrapRef.current && !successWrapRef.current.contains(e.target)) {
+        setSuccessDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [successDropdownOpen])
+
+  const toggleSuccessEvent = (ev) => {
+    const arr = data.primarySuccessEvents || []
+    set('primarySuccessEvents', arr.includes(ev) ? arr.filter(x => x !== ev) : [...arr, ev])
+  }
+  const removeSuccessEvent = (ev) => {
+    const arr = data.primarySuccessEvents || []
+    set('primarySuccessEvents', arr.filter(x => x !== ev))
+  }
+
   const toggleExit = (id) => {
     const arr = data.exitConditions || []
     const exists = arr.some(e => e.id === id)
@@ -2028,24 +2050,74 @@ function ObjectiveStep({ data, onChange }) {
           </div>
         </div>
         <select className="input-base w-full text-xs" value={data.goalType}
-          onChange={e => onChange({ ...data, goalType: e.target.value, primarySuccessEvent: '' })}>
+          onChange={e => onChange({ ...data, goalType: e.target.value, primarySuccessEvents: [] })}>
           <option value="">Select goal type...</option>
           {GOAL_TYPES.map(g => <option key={g} value={g}>{g}</option>)}
         </select>
       </div>
 
-      {/* ── Primary Success Event — revealed when goal type selected ── */}
+      {/* ── Primary Success Events — multi-select, revealed when goal type selected ── */}
       {data.goalType && (
         <div>
           <div className="flex items-center gap-1 mb-1.5">
-            <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Primary Success Event</p>
+            <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Primary Success Events</p>
             <span style={{ color: '#ef4444', fontSize: 12, lineHeight: 1 }}>*</span>
           </div>
-          <select className="input-base w-full text-xs" value={data.primarySuccessEvent}
-            onChange={e => set('primarySuccessEvent', e.target.value)}>
-            <option value="">Select primary success event...</option>
-            {successEvents.map(ev => <option key={ev} value={ev}>{ev}</option>)}
-          </select>
+          <div className="relative" ref={successWrapRef}>
+            <div className="input-base flex items-center gap-2 cursor-pointer text-xs"
+              style={{ color: (data.primarySuccessEvents || []).length === 0 ? 'var(--text-muted)' : 'var(--text-primary)' }}
+              onClick={() => setSuccessDropdownOpen(o => !o)}>
+              <span className="flex-1 min-w-0 truncate">
+                {(data.primarySuccessEvents || []).length === 0
+                  ? 'Select primary success events...'
+                  : `${(data.primarySuccessEvents || []).length} selected`}
+              </span>
+              <ChevronDown size={12} style={{ color: 'var(--text-muted)' }}
+                className={`shrink-0 transition-transform ${successDropdownOpen ? 'rotate-180' : ''}`} />
+            </div>
+            {successDropdownOpen && (
+              <div className="absolute left-0 right-0 top-full mt-1 z-10 max-h-56 overflow-y-auto rounded-lg"
+                style={{ background: 'rgba(18,14,36,0.98)', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+                {successEvents.length === 0 ? (
+                  <div className="px-3 py-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                    No success events defined for this goal type.
+                  </div>
+                ) : successEvents.map(ev => {
+                  const isSelected = (data.primarySuccessEvents || []).includes(ev)
+                  return (
+                    <button type="button" key={ev}
+                      onClick={e => { e.stopPropagation(); toggleSuccessEvent(ev) }}
+                      className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 transition-colors"
+                      style={{
+                        color: 'var(--text-primary)',
+                        background: isSelected ? 'rgba(16,185,129,0.08)' : 'transparent',
+                      }}
+                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = isSelected ? 'rgba(16,185,129,0.08)' : 'transparent' }}>
+                      {isSelected
+                        ? <Check size={12} style={{ color: '#34d399' }} className="shrink-0" strokeWidth={2.5} />
+                        : <Plus  size={11} style={{ color: 'var(--text-muted)' }} className="shrink-0" />}
+                      <span className="truncate" style={{ color: isSelected ? '#34d399' : 'var(--text-primary)', fontWeight: isSelected ? 500 : 400 }}>{ev}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+          {(data.primarySuccessEvents || []).length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {(data.primarySuccessEvents || []).map(ev => (
+                <span key={ev} className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(124,92,252,0.12)', color: '#a78bfa', border: '1px solid rgba(124,92,252,0.25)' }}>
+                  {ev}
+                  <button type="button" onClick={() => removeSuccessEvent(ev)}
+                    className="opacity-60 hover:opacity-100 ml-0.5 flex items-center">
+                    <X size={10} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
           <p className="text-[10px] mt-1.5" style={{ color: '#60a5fa' }}>
             • Secondary signals help NBA adapt the plan over time
           </p>
@@ -3475,7 +3547,7 @@ function ReviewStep({ data, onChange, onJump }) {
       label: 'Objective & Success',
       pairs: [
         { label: 'Goal Type',       val: data.goalType },
-        { label: 'Success Event',   val: data.primarySuccessEvent },
+        { label: 'Success Events',  val: (data.primarySuccessEvents || []).join(', ') },
         { label: 'Exit Conditions', val: (data.exitConditions || []).length > 0
             ? (data.exitConditions || []).map(e => {
                 const fo = FAILURE_OUTCOMES.find(f => f.id === e.outcome)
