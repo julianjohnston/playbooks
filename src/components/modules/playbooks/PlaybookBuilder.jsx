@@ -2762,7 +2762,7 @@ function PhasesStep({ data, onChange }) {
   const addActionSlot = (phaseId) => {
     const phase = phases.find(p => p.id === phaseId)
     const slots = phase?.actionSlots || []
-    updatePhase(phaseId, { actionSlots: [...slots, { id: Date.now(), name: '', mode: 'template', fixedContent: '' }] })
+    updatePhase(phaseId, { actionSlots: [...slots, { id: Date.now(), name: '', mode: 'template', fixedContent: '', timingValue: '', timingUnit: 'minutes' }] })
   }
   const removeActionSlot = (phaseId, slotId) => {
     const phase = phases.find(p => p.id === phaseId)
@@ -2991,6 +2991,40 @@ function PhasesStep({ data, onChange }) {
                                   style={{ color: 'rgba(248,113,113,0.7)' }}>
                                   <Trash2 size={12} />
                                 </button>
+                              </div>
+
+                              {/* Action timing */}
+                              <div>
+                                <p className="text-[10px] font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Action timing</p>
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    className="input-base text-xs"
+                                    style={{ width: 90 }}
+                                    placeholder="0"
+                                    value={slot.timingValue ?? ''}
+                                    onChange={e => {
+                                      const raw = e.target.value
+                                      updateActionSlot(phase.id, slot.id, {
+                                        timingValue: raw === '' ? '' : Math.max(0, parseInt(raw, 10) || 0),
+                                      })
+                                    }}
+                                  />
+                                  <select className="input-base text-xs flex-1"
+                                    value={slot.timingUnit || 'minutes'}
+                                    onChange={e => updateActionSlot(phase.id, slot.id, { timingUnit: e.target.value })}>
+                                    <option value="minutes">minutes</option>
+                                    <option value="hours">hours</option>
+                                    <option value="days">days</option>
+                                  </select>
+                                </div>
+                                <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+                                  {idx === 0 ? 'Relative to phase start.' : 'Relative to when the previous slot sends.'}
+                                </p>
+                                <p className="text-[10px] mt-1.5 leading-relaxed" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                                  Defines when this action is allowed. Agent may adjust based on caps, quiet hours, consent, and engagement.
+                                </p>
                               </div>
 
                               {/* Content mode selector */}
