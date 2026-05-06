@@ -60,10 +60,10 @@ const TENANT_ROOFTOPS = [
 // ── Steps definition ──────────────────────────────────────────────────────────
 const STEPS = [
   { id: 'basics',    label: 'Basics',     icon: FileText  },
-  { id: 'knowledge', label: 'Knowledge',  icon: BookOpen  },
   { id: 'moment',    label: 'Moment',     icon: Sparkles  },
   { id: 'gates',     label: 'Hard Gates', icon: Shield    },
   { id: 'objective', label: 'Objective',  icon: Target    },
+  { id: 'knowledge', label: 'Knowledge',  icon: BookOpen  },
   { id: 'phases',    label: 'Phases',     icon: Layers    },
   { id: 'trust',     label: 'Trust',      icon: Zap       },
   { id: 'review',    label: 'Review',     icon: Eye       },
@@ -4122,7 +4122,7 @@ function ReviewStep({ data, onChange, onJump }) {
     return 'incomplete'
   }
 
-  const STEP_IDS     = ['basics', 'knowledge', 'moment', 'gates', 'objective', 'phases', 'trust']
+  const STEP_IDS     = ['basics', 'moment', 'gates', 'objective', 'knowledge', 'phases', 'trust']
   const passedCount  = STEP_IDS.filter(id => getSectionStatus(id) === 'complete').length
   const incompleteCount = STEP_IDS.filter(id => getSectionStatus(id) === 'incomplete').length
 
@@ -4163,18 +4163,7 @@ function ReviewStep({ data, onChange, onJump }) {
       ],
     },
     {
-      id: 'knowledge', stepIdx: 1,
-      icon: BookOpen, iconBg: 'linear-gradient(135deg,#7c5cfc,#a78bfa)',
-      label: 'Knowledge',
-      pairs: (data.knowledgePackages || []).length > 0
-        ? (data.knowledgePackages || []).map((id, i) => {
-            const pack = KNOWLEDGE_PACKS.find(p => p.id === id)
-            return { label: `Pack ${i + 1}`, val: pack ? `${pack.name} · ${pack.department}` : id }
-          })
-        : [{ label: 'Knowledge Packs', val: 'None selected' }],
-    },
-    {
-      id: 'moment', stepIdx: 2,
+      id: 'moment', stepIdx: 1,
       icon: Sparkles, iconBg: 'linear-gradient(135deg,#7c5cfc,#a78bfa)',
       label: 'Moment Definition',
       pairs: [
@@ -4185,7 +4174,7 @@ function ReviewStep({ data, onChange, onJump }) {
       ],
     },
     {
-      id: 'gates', stepIdx: 3,
+      id: 'gates', stepIdx: 2,
       icon: Shield, iconBg: 'linear-gradient(135deg,#16a34a,#2dd4bf)',
       label: 'Hard Gates',
       pairs: [
@@ -4198,7 +4187,7 @@ function ReviewStep({ data, onChange, onJump }) {
       ],
     },
     {
-      id: 'objective', stepIdx: 4,
+      id: 'objective', stepIdx: 3,
       icon: Target, iconBg: 'linear-gradient(135deg,#f59e0b,#ef4444)',
       label: 'Objective & Success',
       pairs: [
@@ -4223,6 +4212,17 @@ function ReviewStep({ data, onChange, onJump }) {
         { label: 'KPI Association', val: data.kpiAssociation },
         { label: 'Strategy Notes',  val: data.strategyNotes ? (data.strategyNotes.length > 38 ? data.strategyNotes.slice(0,38)+'…' : data.strategyNotes) : '' },
       ],
+    },
+    {
+      id: 'knowledge', stepIdx: 4,
+      icon: BookOpen, iconBg: 'linear-gradient(135deg,#7c5cfc,#a78bfa)',
+      label: 'Knowledge',
+      pairs: (data.knowledgePackages || []).length > 0
+        ? (data.knowledgePackages || []).map((id, i) => {
+            const pack = KNOWLEDGE_PACKS.find(p => p.id === id)
+            return { label: `Pack ${i + 1}`, val: pack ? `${pack.name} · ${pack.department}` : id }
+          })
+        : [{ label: 'Knowledge Packs', val: 'None selected' }],
     },
     {
       id: 'phases', stepIdx: 5,
