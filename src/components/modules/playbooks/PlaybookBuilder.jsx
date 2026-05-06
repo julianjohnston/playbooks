@@ -534,13 +534,6 @@ function StepSidebar({ stepId, data }) {
           )
         })}
       </div>
-
-      {callout && (
-        <div className="px-4 py-4 mx-3 mb-4 rounded-xl"
-          style={{ background: 'rgba(124,92,252,0.07)', border: '1px solid rgba(124,92,252,0.2)' }}>
-          <p className="text-[10px] leading-relaxed" style={{ color: 'rgba(167,139,250,0.8)' }}>{callout.text}</p>
-        </div>
-      )}
     </div>
   )
 }
