@@ -3189,7 +3189,11 @@ function PhasesStep({ data, onChange }) {
                               {/* Agent guidance — only when Generate */}
                               {(slot.mode || 'template') === 'generate' && (
                                 <div>
-                                  <p className="text-[10px] font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Agent guidance</p>
+                                  <div className="flex items-center justify-between mb-1">
+                                    <p className="text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>Agent guidance</p>
+                                    <AIAssistWidget fieldKey="phaseNotes" currentValue={slot.agentGuidance || ''}
+                                      onAccept={val => updateActionSlot(phase.id, slot.id, { agentGuidance: val })} />
+                                  </div>
                                   <textarea
                                     className="input-base w-full text-xs resize-none leading-relaxed"
                                     rows={4}
