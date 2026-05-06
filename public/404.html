@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Playbooks</title>
+  <script>
+    // GitHub Pages SPA shim — redirects to index.html, encoding the requested
+    // path in the query string. The script in index.html decodes it back into
+    // a real URL so React Router can render the right route.
+    var segmentCount = 1; // base path "/playbooks/" => 1 segment
+    var l = window.location;
+    l.replace(
+      l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+      l.pathname.split('/').slice(0, 1 + segmentCount).join('/') + '/?/' +
+      l.pathname.slice(1).split('/').slice(segmentCount).join('/').replace(/&/g, '~and~') +
+      (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+      l.hash
+    );
+  </script>
+</head>
+<body></body>
+</html>
