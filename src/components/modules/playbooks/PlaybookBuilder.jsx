@@ -2946,6 +2946,13 @@ function PhasesStep({ data, onChange }) {
                       placeholder="Describe the purpose, tone, and intent of this phase — this becomes the agent's primary instruction for content creation."
                       value={phase.notes || ''} onChange={e => updatePhase(phase.id, { notes: e.target.value })} />
                   </div>
+
+                  {/* Advanced settings — collapsed by default */}
+                  <Accordion label="Advanced settings">
+                    <p className="text-[10px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                      No advanced settings configured for this phase yet.
+                    </p>
+                  </Accordion>
                 </div>
               </div>
           ))}
