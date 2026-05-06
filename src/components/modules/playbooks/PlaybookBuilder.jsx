@@ -2722,6 +2722,89 @@ const PHASES_TEMPLATES = [
 ]
 function getPhaseType(id) { return PHASE_TYPES.find(t => t.id === id) || PHASE_TYPES[4] }
 
+// ── Signal phase types ────────────────────────────────────────────────────────
+const SIGNAL_TYPES = [
+  { id: 'email-opened',    label: 'Email opened',    icon: MessageSquare, sub: 'Customer opened a sent email'                 },
+  { id: 'link-clicked',    label: 'Link clicked',    icon: Zap,           sub: 'Customer clicked a tracked link'              },
+  { id: 'website-visited', label: 'Website visited', icon: Globe,         sub: 'Customer visited an instrumented page'        },
+]
+function getSignalType(id) { return SIGNAL_TYPES.find(s => s.id === id) }
+
+// ── Modal: pick a signal type when adding a signal phase ─────────────────────
+function AddSignalPhaseModal({ usedSignalIds, onClose, onSelect }) {
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="w-full rounded-2xl flex flex-col"
+        style={{ maxWidth: 480, background: 'rgba(18,14,36,0.97)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' }}>
+
+        <div className="flex items-center gap-3 px-5 pt-5 pb-4"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <div>
+            <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Choose a signal</p>
+            <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+              The agent will react when this signal is detected. Each signal can only be configured once.
+            </p>
+          </div>
+          <button type="button" onClick={onClose}
+            className="ml-auto w-6 h-6 flex items-center justify-center rounded-md transition-colors hover:opacity-70 shrink-0"
+            style={{ color: 'var(--text-muted)', fontSize: 18, lineHeight: 1 }}>
+            ×
+          </button>
+        </div>
+
+        <div className="p-4 space-y-2">
+          {SIGNAL_TYPES.map(s => {
+            const Icon     = s.icon
+            const disabled = usedSignalIds.includes(s.id)
+            return (
+              <button
+                key={s.id}
+                type="button"
+                disabled={disabled}
+                onClick={() => onSelect(s.id)}
+                className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all ${disabled ? 'cursor-not-allowed' : 'cursor-pointer hover:brightness-110'}`}
+                style={{
+                  background: disabled ? 'rgba(255,255,255,0.02)' : 'rgba(45,212,191,0.06)',
+                  border: `1px solid ${disabled ? 'rgba(255,255,255,0.06)' : 'rgba(45,212,191,0.3)'}`,
+                  opacity: disabled ? 0.45 : 1,
+                }}>
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ background: 'rgba(45,212,191,0.15)', border: '1px solid rgba(45,212,191,0.3)', filter: disabled ? 'grayscale(0.6)' : 'none' }}>
+                  <Icon size={16} style={{ color: '#2dd4bf' }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{s.label}</p>
+                    {disabled && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide"
+                        style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                        In use
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{s.sub}</p>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="flex items-center justify-end gap-2 px-5 py-4"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+          <button type="button" onClick={onClose}
+            className="px-4 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-70"
+            style={{ color: 'var(--text-muted)' }}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 // ── Tenant templates (mock list for action slot Template mode) ───────────────
 const TENANT_TEMPLATES = [
   { id: 'tpl-welcome-pro',         name: 'Welcome Email — Pro Tier' },
@@ -2858,9 +2941,12 @@ function PhasesStep({ data, onChange }) {
 
   const signalPhases = data.signalPhases || []
   const setSignalPhases = (sp) => onChange({ ...data, signalPhases: sp })
-  const addBlankSignalPhase = () => {
-    const id = Date.now()
-    setSignalPhases([...signalPhases, { id, name: `Signal Phase ${signalPhases.length + 1}` }])
+  const [showSignalModal, setShowSignalModal] = useState(false)
+  const usedSignalIds = signalPhases.map(s => s.signalType).filter(Boolean)
+  const addSignalPhaseFromType = (signalTypeId) => {
+    const sig = getSignalType(signalTypeId)
+    setSignalPhases([...signalPhases, { id: Date.now(), signalType: signalTypeId, name: sig?.label || 'Signal Phase' }])
+    setShowSignalModal(false)
   }
   const removeSignalPhase = (id) => setSignalPhases(signalPhases.filter(s => s.id !== id))
   const updateSignalPhase = (id, patch) => setSignalPhases(signalPhases.map(s => s.id === id ? { ...s, ...patch } : s))
@@ -3240,37 +3326,55 @@ function PhasesStep({ data, onChange }) {
             </p>
           </div>
 
-          {signalPhases.map((sp, i) => (
-            <div key={sp.id} className="rounded-xl overflow-hidden"
-              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <div className="flex items-center gap-3 px-4 py-3"
-                style={{ background: 'rgba(255,255,255,0.01)' }}>
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0"
-                  style={{ background: 'rgba(45,212,191,0.15)', border: '1px solid rgba(45,212,191,0.3)', color: '#2dd4bf' }}>
-                  {i + 1}
+          {signalPhases.map((sp) => {
+            const sig  = getSignalType(sp.signalType)
+            const Icon = sig?.icon
+            return (
+              <div key={sp.id} className="rounded-xl overflow-hidden"
+                style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="flex items-center gap-3 px-4 py-3"
+                  style={{ background: 'rgba(255,255,255,0.01)' }}>
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ background: 'rgba(45,212,191,0.15)', border: '1px solid rgba(45,212,191,0.3)' }}>
+                    {Icon ? <Icon size={13} style={{ color: '#2dd4bf' }} /> : null}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{sig?.label || sp.name}</p>
+                    {sig?.sub && (
+                      <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{sig.sub}</p>
+                    )}
+                  </div>
+                  <button type="button" onClick={() => removeSignalPhase(sp.id)}
+                    className="opacity-35 hover:opacity-80 transition-opacity shrink-0"
+                    title="Remove signal phase">
+                    <Trash2 size={12} style={{ color: '#f87171' }} />
+                  </button>
                 </div>
-                <input
-                  className="flex-1 bg-transparent text-xs font-bold outline-none"
-                  style={{ color: 'var(--text-primary)' }}
-                  placeholder={`Signal phase ${i + 1} name...`}
-                  value={sp.name || ''}
-                  onChange={e => updateSignalPhase(sp.id, { name: e.target.value })}
-                />
-                <button type="button" onClick={() => removeSignalPhase(sp.id)}
-                  className="opacity-35 hover:opacity-80 transition-opacity shrink-0"
-                  title="Remove signal phase">
-                  <Trash2 size={12} style={{ color: '#f87171' }} />
-                </button>
               </div>
-            </div>
-          ))}
+            )
+          })}
 
-          <button type="button" onClick={addBlankSignalPhase}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-medium transition-all hover:brightness-110"
-            style={{ background: 'rgba(45,212,191,0.07)', border: '1px dashed rgba(45,212,191,0.35)', color: '#2dd4bf' }}>
-            <Plus size={13} /> Add signal phase
+          <button type="button"
+            onClick={() => setShowSignalModal(true)}
+            disabled={usedSignalIds.length >= SIGNAL_TYPES.length}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-medium transition-all hover:brightness-110 disabled:cursor-not-allowed"
+            style={{
+              background: 'rgba(45,212,191,0.07)',
+              border: '1px dashed rgba(45,212,191,0.35)',
+              color: '#2dd4bf',
+              opacity: usedSignalIds.length >= SIGNAL_TYPES.length ? 0.45 : 1,
+            }}>
+            <Plus size={13} /> {usedSignalIds.length >= SIGNAL_TYPES.length ? 'All signals configured' : 'Add signal phase'}
           </button>
         </div>
+      )}
+
+      {showSignalModal && (
+        <AddSignalPhaseModal
+          usedSignalIds={usedSignalIds}
+          onClose={() => setShowSignalModal(false)}
+          onSelect={addSignalPhaseFromType}
+        />
       )}
 
     </div>
