@@ -2935,15 +2935,15 @@ function PhasesStep({ data, onChange }) {
                     )}
                   </div>
 
-                  {/* Notes */}
+                  {/* Agent Guidance */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <FieldLabel>Notes <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(Optional)</span></FieldLabel>
+                      <FieldLabel>Agent Guidance</FieldLabel>
                       <AIAssistWidget fieldKey="phaseNotes" currentValue={phase.notes || ''}
                         onAccept={val => updatePhase(phase.id, { notes: val })} />
                     </div>
                     <textarea className="input-base w-full text-xs resize-none" rows={2}
-                      placeholder="Describe the purpose, pacing, or tone of this phase..."
+                      placeholder="Describe the purpose, tone, and intent of this phase — this becomes the agent's primary instruction for content creation."
                       value={phase.notes || ''} onChange={e => updatePhase(phase.id, { notes: e.target.value })} />
                   </div>
                 </div>
