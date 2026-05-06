@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { truthPacks as KNOWLEDGE_PACKS } from '../../../data/mockKnowledge'
@@ -1552,12 +1552,26 @@ function AddCustomGateModal({ onClose, onSave }) {
   const [dataSections,        setDataSections]        = useState([])
   const [sectionSearch,       setSectionSearch]       = useState('')
   const [sectionDropdownOpen, setSectionDropdownOpen] = useState(false)
+  const sectionWrapRef = useRef(null)
 
   const filteredSections = CUSTOM_GATE_DATA_SECTIONS.filter(s =>
-    s.toLowerCase().includes(sectionSearch.toLowerCase()) && !dataSections.includes(s),
+    s.toLowerCase().includes(sectionSearch.toLowerCase()),
   )
-  const addSection    = (s) => { setDataSections([...dataSections, s]); setSectionSearch('') }
+  const toggleSection = (s) => setDataSections(
+    dataSections.includes(s) ? dataSections.filter(x => x !== s) : [...dataSections, s],
+  )
   const removeSection = (s) => setDataSections(dataSections.filter(x => x !== s))
+
+  useEffect(() => {
+    if (!sectionDropdownOpen) return
+    const handler = (e) => {
+      if (sectionWrapRef.current && !sectionWrapRef.current.contains(e.target)) {
+        setSectionDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [sectionDropdownOpen])
 
   const handleSave = () => {
     if (!description.trim()) return
@@ -1615,18 +1629,17 @@ function AddCustomGateModal({ onClose, onSave }) {
           {/* Scope to data sections (optional) */}
           <div>
             <p className="text-[11px] font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>Scope to data sections</p>
-            <div className="relative">
-              <div className="input-base flex items-center gap-2"
-                onClick={() => setSectionDropdownOpen(true)}>
+            <div className="relative" ref={sectionWrapRef}>
+              <div className="input-base flex items-center gap-2 cursor-pointer"
+                onClick={() => setSectionDropdownOpen(o => !o)}>
                 <Search size={12} style={{ color: 'var(--text-muted)' }} className="shrink-0" />
                 <input
-                  className="bg-transparent outline-none flex-1 text-xs min-w-0"
+                  className="bg-transparent outline-none flex-1 text-xs min-w-0 cursor-pointer"
                   style={{ color: 'var(--text-primary)' }}
                   placeholder="Search data sections..."
                   value={sectionSearch}
                   onChange={e => { setSectionSearch(e.target.value); setSectionDropdownOpen(true) }}
-                  onFocus={() => setSectionDropdownOpen(true)}
-                  onBlur={() => setTimeout(() => setSectionDropdownOpen(false), 150)}
+                  onClick={e => e.stopPropagation()}
                 />
                 <ChevronDown size={12} style={{ color: 'var(--text-muted)' }}
                   className={`shrink-0 transition-transform ${sectionDropdownOpen ? 'rotate-180' : ''}`} />
@@ -1636,17 +1649,27 @@ function AddCustomGateModal({ onClose, onSave }) {
                   style={{ background: 'rgba(18,14,36,0.98)', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
                   {filteredSections.length === 0 ? (
                     <div className="px-3 py-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                      {sectionSearch ? 'No matching sections.' : 'All sections selected.'}
+                      No matching sections.
                     </div>
-                  ) : filteredSections.map(s => (
-                    <button type="button" key={s}
-                      onMouseDown={e => { e.preventDefault(); addSection(s) }}
-                      className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 transition-colors hover:bg-white/5"
-                      style={{ color: 'var(--text-primary)' }}>
-                      <Plus size={11} style={{ color: 'var(--text-muted)' }} className="shrink-0" />
-                      <span className="truncate">{s}</span>
-                    </button>
-                  ))}
+                  ) : filteredSections.map(s => {
+                    const isSelected = dataSections.includes(s)
+                    return (
+                      <button type="button" key={s}
+                        onClick={e => { e.stopPropagation(); toggleSection(s) }}
+                        className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 transition-colors"
+                        style={{
+                          color: 'var(--text-primary)',
+                          background: isSelected ? 'rgba(16,185,129,0.08)' : 'transparent',
+                        }}
+                        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = isSelected ? 'rgba(16,185,129,0.08)' : 'transparent' }}>
+                        {isSelected
+                          ? <Check size={12} style={{ color: '#34d399' }} className="shrink-0" strokeWidth={2.5} />
+                          : <Plus  size={11} style={{ color: 'var(--text-muted)' }} className="shrink-0" />}
+                        <span className="truncate" style={{ color: isSelected ? '#34d399' : 'var(--text-primary)', fontWeight: isSelected ? 500 : 400 }}>{s}</span>
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>
