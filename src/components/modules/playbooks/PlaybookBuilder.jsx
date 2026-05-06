@@ -2866,7 +2866,7 @@ function PhasesStep({ data, onChange }) {
   const addActionSlot = (phaseId) => {
     const phase = phases.find(p => p.id === phaseId)
     const slots = phase?.actionSlots || []
-    updatePhase(phaseId, { actionSlots: [...slots, { id: Date.now(), name: '', mode: 'template', fixedContent: '', templateId: '', timingValue: '', timingUnit: 'minutes' }] })
+    updatePhase(phaseId, { actionSlots: [...slots, { id: Date.now(), name: '', mode: 'template', fixedContent: '', templateId: '', agentGuidance: '', timingValue: '', timingUnit: 'minutes' }] })
   }
   const removeActionSlot = (phaseId, slotId) => {
     const phase = phases.find(p => p.id === phaseId)
@@ -3183,6 +3183,20 @@ function PhasesStep({ data, onChange }) {
                                   <p className="text-[10px] mt-1.5 leading-relaxed" style={{ color: 'rgba(255,255,255,0.35)' }}>
                                     The fixed parts are sent exactly as written. The <span style={{ fontFamily: 'JetBrains Mono, monospace', color: '#a78bfa' }}>[agent content]</span> tag is replaced by agent-generated output at send time.
                                   </p>
+                                </div>
+                              )}
+
+                              {/* Agent guidance — only when Generate */}
+                              {(slot.mode || 'template') === 'generate' && (
+                                <div>
+                                  <p className="text-[10px] font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Agent guidance</p>
+                                  <textarea
+                                    className="input-base w-full text-xs resize-none leading-relaxed"
+                                    rows={4}
+                                    placeholder="Give the agent specific instruction for this slot — tone, goal, or content direction."
+                                    value={slot.agentGuidance || ''}
+                                    onChange={e => updateActionSlot(phase.id, slot.id, { agentGuidance: e.target.value })}
+                                  />
                                 </div>
                               )}
                             </div>
