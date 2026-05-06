@@ -1978,13 +1978,16 @@ function ObjectiveStep({ data, onChange }) {
     const exists = arr.some(e => e.id === id)
     set('exitConditions', exists
       ? arr.filter(e => e.id !== id)
-      : [...arr, { id, outcome: '', nextPlaybook: '', ...exitDefaults(id) }]
+      : [...arr, { id, outcomes: [], nextPlaybook: '', ...exitDefaults(id) }]
     )
   }
-  const setExitOutcome = (id, outcome) =>
-    set('exitConditions', (data.exitConditions || []).map(e =>
-      e.id === id ? { ...e, outcome, nextPlaybook: '' } : e
-    ))
+  const toggleExitOutcome = (id, outcomeId) =>
+    set('exitConditions', (data.exitConditions || []).map(e => {
+      if (e.id !== id) return e
+      const arr = e.outcomes || []
+      const next = arr.includes(outcomeId) ? arr.filter(x => x !== outcomeId) : [...arr, outcomeId]
+      return { ...e, outcomes: next, nextPlaybook: next.includes('apply-playbook') ? (e.nextPlaybook || '') : '' }
+    }))
   const setExitPlaybook = (id, nextPlaybook) =>
     set('exitConditions', (data.exitConditions || []).map(e =>
       e.id === id ? { ...e, nextPlaybook } : e
@@ -2177,20 +2180,20 @@ function ObjectiveStep({ data, onChange }) {
                     <p className="text-xs font-semibold" style={{ color: checked ? 'var(--text-primary)' : 'rgba(255,255,255,0.55)' }}>{ec.label}</p>
                     <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{ec.sub}</p>
                   </div>
-                  {checked && (formatExitLimit(entry) || entry.outcome) && (
-                    <div className="flex items-center gap-1.5 shrink-0">
+                  {checked && (formatExitLimit(entry) || (entry.outcomes || []).length > 0) && (
+                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end" style={{ maxWidth: 280 }}>
                       {formatExitLimit(entry) && (
                         <span className="text-[10px] font-medium px-2 py-0.5 rounded-full"
                           style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.65)', border: '1px solid rgba(255,255,255,0.12)' }}>
                           {formatExitLimit(entry)}
                         </span>
                       )}
-                      {entry.outcome && (
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-                          style={{ background: 'rgba(234,88,12,0.12)', color: '#fb923c', border: '1px solid rgba(234,88,12,0.25)' }}>
-                          {FAILURE_OUTCOMES.find(f => f.id === entry.outcome)?.label || entry.outcome}
+                      {(entry.outcomes || []).map(oid => (
+                        <span key={oid} className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+                          style={{ background: 'rgba(124,92,252,0.18)', color: '#c4b5fd', border: '1px solid rgba(124,92,252,0.4)' }}>
+                          {FAILURE_OUTCOMES.find(f => f.id === oid)?.label || oid}
                         </span>
-                      )}
+                      ))}
                     </div>
                   )}
                 </button>
@@ -2237,35 +2240,44 @@ function ObjectiveStep({ data, onChange }) {
                     )}
 
                     <p className="text-[10px] font-semibold mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                      OUTCOME WHEN THIS CONDITION IS MET
+                      OUTCOME(S) WHEN THIS CONDITION IS MET
                     </p>
                     <div className="grid grid-cols-2 gap-1.5 mb-2">
                       {FAILURE_OUTCOMES.map(fo => {
-                        const active = entry.outcome === fo.id
+                        const active = (entry.outcomes || []).includes(fo.id)
                         const Icon   = fo.icon
                         return (
                           <button key={fo.id} type="button"
-                            onClick={() => setExitOutcome(ec.id, fo.id)}
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-all"
+                            onClick={() => toggleExitOutcome(ec.id, fo.id)}
+                            className="relative flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-all"
                             style={{
-                              background: active ? 'rgba(124,92,252,0.12)' : 'rgba(255,255,255,0.03)',
-                              border: `1.5px solid ${active ? 'rgba(124,92,252,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                              background: active
+                                ? 'linear-gradient(135deg, rgba(124,92,252,0.22), rgba(59,130,246,0.18))'
+                                : 'rgba(255,255,255,0.03)',
+                              border: `1.5px solid ${active ? 'rgba(124,92,252,0.65)' : 'rgba(255,255,255,0.08)'}`,
+                              boxShadow: active ? '0 2px 10px rgba(124,92,252,0.18)' : 'none',
                             }}>
                             <Icon size={12} style={{ color: active ? '#a78bfa' : 'rgba(255,255,255,0.35)', flexShrink: 0 }} />
-                            <div>
+                            <div className="min-w-0 flex-1">
                               <p className="text-[11px] font-semibold leading-tight"
                                 style={{ color: active ? '#fff' : 'rgba(255,255,255,0.6)' }}>
                                 {fo.label}
                               </p>
                               <p className="text-[9px] leading-tight" style={{ color: 'var(--text-muted)' }}>{fo.sub}</p>
                             </div>
+                            {active && (
+                              <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0"
+                                style={{ background: '#7c5cfc', boxShadow: '0 0 0 2px rgba(124,92,252,0.25)' }}>
+                                <Check size={9} style={{ color: '#fff' }} strokeWidth={3} />
+                              </div>
+                            )}
                           </button>
                         )
                       })}
                     </div>
 
                     {/* Apply Playbook selector */}
-                    {entry.outcome === 'apply-playbook' && (
+                    {(entry.outcomes || []).includes('apply-playbook') && (
                       <div className="mt-2 p-3 rounded-xl"
                         style={{ background: 'rgba(37,99,235,0.07)', border: '1px solid rgba(37,99,235,0.22)' }}>
                         <p className="text-[10px] font-semibold mb-1.5" style={{ color: '#93c5fd' }}>Select Next Playbook</p>
@@ -3612,9 +3624,11 @@ function ReviewStep({ data, onChange, onJump }) {
         { label: 'Success Events',  val: (data.primarySuccessEvents || []).join(', ') },
         { label: 'Exit Conditions', val: (data.exitConditions || []).length > 0
             ? (data.exitConditions || []).map(e => {
-                const fo = FAILURE_OUTCOMES.find(f => f.id === e.outcome)
                 const ec = EXIT_CONDITIONS.find(c => c.id === e.id)
-                return fo ? `${ec?.label} → ${fo.label}` : ec?.label
+                const labels = (e.outcomes || [])
+                  .map(oid => FAILURE_OUTCOMES.find(f => f.id === oid)?.label)
+                  .filter(Boolean)
+                return labels.length > 0 ? `${ec?.label} → ${labels.join(', ')}` : ec?.label
               }).join(' · ')
             : '' },
         { label: 'KPI Association', val: data.kpiAssociation },
