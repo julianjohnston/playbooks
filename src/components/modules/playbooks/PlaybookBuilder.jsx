@@ -1968,12 +1968,17 @@ function ObjectiveStep({ data, onChange }) {
     set('primarySuccessEvents', arr.filter(x => x !== ev))
   }
 
+  const exitDefaults = (id) => {
+    if (id === 'time-limit')   return { limitValue: 30, limitUnit: 'days' }
+    if (id === 'max-attempts') return { limitValue: 5 }
+    return {}
+  }
   const toggleExit = (id) => {
     const arr = data.exitConditions || []
     const exists = arr.some(e => e.id === id)
     set('exitConditions', exists
       ? arr.filter(e => e.id !== id)
-      : [...arr, { id, outcome: '', nextPlaybook: '' }]
+      : [...arr, { id, outcome: '', nextPlaybook: '', ...exitDefaults(id) }]
     )
   }
   const setExitOutcome = (id, outcome) =>
@@ -1984,6 +1989,16 @@ function ObjectiveStep({ data, onChange }) {
     set('exitConditions', (data.exitConditions || []).map(e =>
       e.id === id ? { ...e, nextPlaybook } : e
     ))
+  const setExitLimit = (id, patch) =>
+    set('exitConditions', (data.exitConditions || []).map(e =>
+      e.id === id ? { ...e, ...patch } : e
+    ))
+  const formatExitLimit = (entry) => {
+    if (!entry) return ''
+    if (entry.id === 'time-limit'   && entry.limitValue) return `${entry.limitValue} ${entry.limitUnit || 'days'}`
+    if (entry.id === 'max-attempts' && entry.limitValue) return `${entry.limitValue} attempt${entry.limitValue === 1 ? '' : 's'}`
+    return ''
+  }
   const successEvents = SUCCESS_EVENTS_MAP[data.goalType] || []
 
   return (
@@ -2162,11 +2177,21 @@ function ObjectiveStep({ data, onChange }) {
                     <p className="text-xs font-semibold" style={{ color: checked ? 'var(--text-primary)' : 'rgba(255,255,255,0.55)' }}>{ec.label}</p>
                     <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{ec.sub}</p>
                   </div>
-                  {checked && entry.outcome && (
-                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0"
-                      style={{ background: 'rgba(234,88,12,0.12)', color: '#fb923c', border: '1px solid rgba(234,88,12,0.25)' }}>
-                      {FAILURE_OUTCOMES.find(f => f.id === entry.outcome)?.label || entry.outcome}
-                    </span>
+                  {checked && (formatExitLimit(entry) || entry.outcome) && (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {formatExitLimit(entry) && (
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+                          style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.65)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                          {formatExitLimit(entry)}
+                        </span>
+                      )}
+                      {entry.outcome && (
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+                          style={{ background: 'rgba(234,88,12,0.12)', color: '#fb923c', border: '1px solid rgba(234,88,12,0.25)' }}>
+                          {FAILURE_OUTCOMES.find(f => f.id === entry.outcome)?.label || entry.outcome}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </button>
 
@@ -2174,6 +2199,43 @@ function ObjectiveStep({ data, onChange }) {
                 {checked && (
                   <div className="px-4 pt-3 pb-4"
                     style={{ borderTop: '1px solid rgba(234,88,12,0.15)', background: 'rgba(0,0,0,0.12)' }}>
+
+                    {/* Limit input — only for time-limit and max-attempts */}
+                    {(ec.id === 'time-limit' || ec.id === 'max-attempts') && (
+                      <div className="mb-4">
+                        <p className="text-[10px] font-semibold mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                          {ec.id === 'time-limit' ? 'TIME LIMIT' : 'ATTEMPT LIMIT'}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="1"
+                            className="input-base text-xs"
+                            style={{ width: 90 }}
+                            value={entry.limitValue ?? ''}
+                            onChange={e => {
+                              const raw = e.target.value
+                              setExitLimit(ec.id, { limitValue: raw === '' ? '' : Math.max(1, parseInt(raw, 10) || 1) })
+                            }}
+                          />
+                          {ec.id === 'time-limit' ? (
+                            <select className="input-base text-xs flex-1"
+                              value={entry.limitUnit || 'days'}
+                              onChange={e => setExitLimit(ec.id, { limitUnit: e.target.value })}>
+                              <option value="hours">hours</option>
+                              <option value="days">days</option>
+                              <option value="weeks">weeks</option>
+                              <option value="months">months</option>
+                            </select>
+                          ) : (
+                            <span className="text-xs flex-1" style={{ color: 'var(--text-muted)' }}>
+                              attempt{entry.limitValue === 1 ? '' : 's'} before this condition triggers
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     <p className="text-[10px] font-semibold mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>
                       OUTCOME WHEN THIS CONDITION IS MET
                     </p>
