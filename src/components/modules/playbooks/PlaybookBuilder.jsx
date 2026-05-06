@@ -2729,6 +2729,110 @@ const PHASES_TEMPLATES = [
 ]
 function getPhaseType(id) { return PHASE_TYPES.find(t => t.id === id) || PHASE_TYPES[4] }
 
+// ── Tenant templates (mock list for action slot Template mode) ───────────────
+const TENANT_TEMPLATES = [
+  { id: 'tpl-welcome-pro',         name: 'Welcome Email — Pro Tier' },
+  { id: 'tpl-welcome-std',         name: 'Welcome Email — Standard Tier' },
+  { id: 'tpl-onboarding-day1',     name: 'Onboarding Day 1' },
+  { id: 'tpl-onboarding-day7',     name: 'Onboarding Day 7 Check-In' },
+  { id: 'tpl-renewal-30',          name: 'Renewal Reminder — 30 Days' },
+  { id: 'tpl-renewal-7',           name: 'Renewal Reminder — 7 Days' },
+  { id: 'tpl-service-reminder',    name: 'Service Appointment Reminder' },
+  { id: 'tpl-service-followup',    name: 'Service Visit Follow-Up' },
+  { id: 'tpl-reengagement',        name: 'Re-engagement Outreach' },
+  { id: 'tpl-winback',             name: 'Win-Back Campaign' },
+  { id: 'tpl-loyalty-offer',       name: 'Loyalty Offer Notification' },
+  { id: 'tpl-survey',              name: 'Post-Interaction Survey' },
+  { id: 'tpl-account-review',      name: 'Quarterly Account Review' },
+  { id: 'tpl-quote-followup',      name: 'Quote Follow-Up' },
+  { id: 'tpl-demo-confirm',        name: 'Demo Confirmation' },
+  { id: 'tpl-recall-notice',       name: 'Recall Notification' },
+  { id: 'tpl-maintenance',         name: 'Maintenance Reminder' },
+  { id: 'tpl-lead-nurture',        name: 'Lead Nurture — Day 7' },
+]
+
+// ── Template selector (single-select, search-and-pick, outside-click close) ──
+function TemplateSelector({ templates, value, onChange }) {
+  const [search,    setSearch]    = useState('')
+  const [open,      setOpen]      = useState(false)
+  const wrapRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const selected = templates.find(t => t.id === value)
+  const filtered = templates.filter(t => t.name.toLowerCase().includes(search.toLowerCase()))
+  const choose = (id) => { onChange(id); setOpen(false); setSearch('') }
+
+  return (
+    <div>
+      <div className="relative" ref={wrapRef}>
+        <div className="input-base flex items-center gap-2 cursor-pointer"
+          onClick={() => setOpen(o => !o)}>
+          <Search size={12} style={{ color: 'var(--text-muted)' }} className="shrink-0" />
+          <input
+            className="bg-transparent outline-none flex-1 text-xs min-w-0 cursor-pointer"
+            style={{ color: 'var(--text-primary)' }}
+            placeholder={selected ? selected.name : 'Search templates...'}
+            value={search}
+            onChange={e => { setSearch(e.target.value); setOpen(true) }}
+            onClick={e => e.stopPropagation()}
+          />
+          <ChevronDown size={12} style={{ color: 'var(--text-muted)' }}
+            className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </div>
+        {open && (
+          <div className="absolute left-0 right-0 top-full mt-1 z-10 max-h-56 overflow-y-auto rounded-lg"
+            style={{ background: 'rgba(18,14,36,0.98)', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+            {filtered.length === 0 ? (
+              <div className="px-3 py-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                No matching templates.
+              </div>
+            ) : filtered.map(t => {
+              const isSelected = value === t.id
+              return (
+                <button type="button" key={t.id}
+                  onClick={(e) => { e.stopPropagation(); choose(t.id) }}
+                  className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 transition-colors"
+                  style={{
+                    color: 'var(--text-primary)',
+                    background: isSelected ? 'rgba(16,185,129,0.08)' : 'transparent',
+                  }}
+                  onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = isSelected ? 'rgba(16,185,129,0.08)' : 'transparent' }}>
+                  {isSelected
+                    ? <Check    size={12} style={{ color: '#34d399' }} className="shrink-0" strokeWidth={2.5} />
+                    : <FileText size={11} style={{ color: 'var(--text-muted)' }} className="shrink-0" />}
+                  <span className="truncate" style={{ color: isSelected ? '#34d399' : 'var(--text-primary)', fontWeight: isSelected ? 500 : 400 }}>{t.name}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+      {selected && (
+        <div className="flex items-center gap-1.5 mt-2">
+          <span className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full"
+            style={{ background: 'rgba(124,92,252,0.12)', color: '#a78bfa', border: '1px solid rgba(124,92,252,0.25)' }}>
+            <FileText size={10} />
+            {selected.name}
+            <button type="button" onClick={() => onChange('')}
+              className="opacity-60 hover:opacity-100 ml-0.5 flex items-center">
+              <X size={10} />
+            </button>
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Step: Phases ──────────────────────────────────────────────────────────────
 function PhasesStep({ data, onChange }) {
   const phases = data.phases || []
@@ -2762,7 +2866,7 @@ function PhasesStep({ data, onChange }) {
   const addActionSlot = (phaseId) => {
     const phase = phases.find(p => p.id === phaseId)
     const slots = phase?.actionSlots || []
-    updatePhase(phaseId, { actionSlots: [...slots, { id: Date.now(), name: '', mode: 'template', fixedContent: '', timingValue: '', timingUnit: 'minutes' }] })
+    updatePhase(phaseId, { actionSlots: [...slots, { id: Date.now(), name: '', mode: 'template', fixedContent: '', templateId: '', timingValue: '', timingUnit: 'minutes' }] })
   }
   const removeActionSlot = (phaseId, slotId) => {
     const phase = phases.find(p => p.id === phaseId)
@@ -3053,8 +3157,20 @@ function PhasesStep({ data, onChange }) {
                                 </div>
                               </div>
 
-                              {/* Fixed content — only when Template or Hybrid */}
-                              {((slot.mode || 'template') === 'template' || (slot.mode || 'template') === 'hybrid') && (
+                              {/* Template selector — only when mode is Template */}
+                              {(slot.mode || 'template') === 'template' && (
+                                <div>
+                                  <p className="text-[10px] font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Template</p>
+                                  <TemplateSelector
+                                    templates={TENANT_TEMPLATES}
+                                    value={slot.templateId || ''}
+                                    onChange={(tplId) => updateActionSlot(phase.id, slot.id, { templateId: tplId })}
+                                  />
+                                </div>
+                              )}
+
+                              {/* Fixed content — only when Hybrid */}
+                              {(slot.mode || 'template') === 'hybrid' && (
                                 <div>
                                   <p className="text-[10px] font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Fixed content</p>
                                   <textarea
