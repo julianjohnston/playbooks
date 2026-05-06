@@ -97,7 +97,7 @@ const INITIAL = {
   gate_compliance_checks: [],
   gate_custom: [],
   // Objective & Success
-  goalType: '', primarySuccessEvents: [], exitConditions: [], customExitConditions: [],
+  goalType: '', primarySuccessEvents: [], exitConditions: [], customExitConditions: [], signalPhases: [],
   kpiAssociation: '', strategyNotes: '',
   // Phases
   phases: [],
@@ -2856,6 +2856,15 @@ function PhasesStep({ data, onChange }) {
     updatePhase(phaseId, { channels: ch.includes(chId) ? ch.filter(c => c !== chId) : [...ch, chId] })
   }
 
+  const signalPhases = data.signalPhases || []
+  const setSignalPhases = (sp) => onChange({ ...data, signalPhases: sp })
+  const addBlankSignalPhase = () => {
+    const id = Date.now()
+    setSignalPhases([...signalPhases, { id, name: `Signal Phase ${signalPhases.length + 1}` }])
+  }
+  const removeSignalPhase = (id) => setSignalPhases(signalPhases.filter(s => s.id !== id))
+  const updateSignalPhase = (id, patch) => setSignalPhases(signalPhases.map(s => s.id === id ? { ...s, ...patch } : s))
+
   const addActionSlot = (phaseId) => {
     const phase = phases.find(p => p.id === phaseId)
     const slots = phase?.actionSlots || []
@@ -3217,6 +3226,49 @@ function PhasesStep({ data, onChange }) {
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-medium transition-all hover:brightness-110"
             style={{ background: 'rgba(124,92,252,0.07)', border: '1px dashed rgba(124,92,252,0.35)', color: '#a78bfa' }}>
             <Plus size={13} /> Add Phase
+          </button>
+        </div>
+      )}
+
+      {/* ── Signal Phases ── */}
+      {!showTemplates && (
+        <div className="space-y-4">
+          <div>
+            <SectionLabel>Signal Phases</SectionLabel>
+            <p className="text-[11px] leading-relaxed -mt-2 mb-3" style={{ color: 'var(--text-muted)' }}>
+              Configure how the agent responds when a customer engagement signal is detected, independent of the outreach cadence above.
+            </p>
+          </div>
+
+          {signalPhases.map((sp, i) => (
+            <div key={sp.id} className="rounded-xl overflow-hidden"
+              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="flex items-center gap-3 px-4 py-3"
+                style={{ background: 'rgba(255,255,255,0.01)' }}>
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0"
+                  style={{ background: 'rgba(45,212,191,0.15)', border: '1px solid rgba(45,212,191,0.3)', color: '#2dd4bf' }}>
+                  {i + 1}
+                </div>
+                <input
+                  className="flex-1 bg-transparent text-xs font-bold outline-none"
+                  style={{ color: 'var(--text-primary)' }}
+                  placeholder={`Signal phase ${i + 1} name...`}
+                  value={sp.name || ''}
+                  onChange={e => updateSignalPhase(sp.id, { name: e.target.value })}
+                />
+                <button type="button" onClick={() => removeSignalPhase(sp.id)}
+                  className="opacity-35 hover:opacity-80 transition-opacity shrink-0"
+                  title="Remove signal phase">
+                  <Trash2 size={12} style={{ color: '#f87171' }} />
+                </button>
+              </div>
+            </div>
+          ))}
+
+          <button type="button" onClick={addBlankSignalPhase}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-medium transition-all hover:brightness-110"
+            style={{ background: 'rgba(45,212,191,0.07)', border: '1px dashed rgba(45,212,191,0.35)', color: '#2dd4bf' }}>
+            <Plus size={13} /> Add signal phase
           </button>
         </div>
       )}
