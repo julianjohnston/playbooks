@@ -2192,6 +2192,8 @@ function ObjectiveStep({ data, onChange }) {
     }))
   const setCustomExitPlaybook = (id, nextPlaybook) =>
     set('customExitConditions', customExits.map(c => c.id === id ? { ...c, nextPlaybook } : c))
+  const toggleCustomExitCollapsed = (id) =>
+    set('customExitConditions', customExits.map(c => c.id === id ? { ...c, collapsed: !c.collapsed } : c))
   const successEvents = SUCCESS_EVENTS_MAP[data.goalType] || []
 
   return (
@@ -2488,45 +2490,52 @@ function ObjectiveStep({ data, onChange }) {
           })}
 
           {/* Custom exit conditions — user-defined */}
-          {customExits.map(ce => (
+          {customExits.map(ce => {
+            const collapsed = !!ce.collapsed
+            return (
             <div key={ce.id} className="rounded-xl overflow-hidden"
               style={{ border: '1.5px solid rgba(234,88,12,0.4)' }}>
-              {/* Header row */}
-              <div className="flex items-start gap-3 px-3 py-2.5"
-                style={{ background: 'rgba(234,88,12,0.06)' }}>
-                <div className="w-4 h-4 rounded flex items-center justify-center shrink-0 mt-0.5"
-                  style={{ background: '#fb923c', border: '1.5px solid #fb923c' }}>
-                  <svg width="8" height="6" viewBox="0 0 8 6"><path d="M1 3l2 2 4-4" stroke="#fff" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{ce.name}</p>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide shrink-0"
-                      style={{ background: 'rgba(234,88,12,0.15)', color: '#fb923c', border: '1px solid rgba(234,88,12,0.3)' }}>
-                      Custom
-                    </span>
+              {/* Header row — clickable to collapse/expand, with separate remove button */}
+              <div className="flex items-stretch" style={{ background: 'rgba(234,88,12,0.06)' }}>
+                <button type="button" onClick={() => toggleCustomExitCollapsed(ce.id)}
+                  className="flex-1 flex items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-white/[0.02]">
+                  <div className="w-4 h-4 rounded flex items-center justify-center shrink-0 mt-0.5"
+                    style={{ background: '#fb923c', border: '1.5px solid #fb923c' }}>
+                    <svg width="8" height="6" viewBox="0 0 8 6"><path d="M1 3l2 2 4-4" stroke="#fff" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </div>
-                  <p className="text-[10px] mt-0.5 leading-relaxed" style={{ color: 'var(--text-muted)' }}>{ce.description}</p>
-                </div>
-                {(ce.outcomes || []).length > 0 && (
-                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end" style={{ maxWidth: 200 }}>
-                    {(ce.outcomes || []).map(oid => (
-                      <span key={oid} className="text-[10px] font-medium px-2 py-0.5 rounded-full"
-                        style={{ background: 'rgba(124,92,252,0.18)', color: '#c4b5fd', border: '1px solid rgba(124,92,252,0.4)' }}>
-                        {FAILURE_OUTCOMES.find(f => f.id === oid)?.label || oid}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{ce.name}</p>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide shrink-0"
+                        style={{ background: 'rgba(234,88,12,0.15)', color: '#fb923c', border: '1px solid rgba(234,88,12,0.3)' }}>
+                        Custom
                       </span>
-                    ))}
+                    </div>
+                    <p className="text-[10px] mt-0.5 leading-relaxed" style={{ color: 'var(--text-muted)' }}>{ce.description}</p>
                   </div>
-                )}
-                <button type="button" onClick={() => removeCustomExit(ce.id)}
-                  className="shrink-0 transition-opacity hover:opacity-70 mt-0.5"
+                  {(ce.outcomes || []).length > 0 && (
+                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end" style={{ maxWidth: 200 }}>
+                      {(ce.outcomes || []).map(oid => (
+                        <span key={oid} className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+                          style={{ background: 'rgba(124,92,252,0.18)', color: '#c4b5fd', border: '1px solid rgba(124,92,252,0.4)' }}>
+                          {FAILURE_OUTCOMES.find(f => f.id === oid)?.label || oid}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <ChevronDown size={13} style={{ color: 'rgba(255,255,255,0.4)' }}
+                    className={`shrink-0 mt-0.5 transition-transform ${collapsed ? '' : 'rotate-180'}`} />
+                </button>
+                <button type="button" onClick={(e) => { e.stopPropagation(); removeCustomExit(ce.id) }}
+                  className="shrink-0 px-3 transition-opacity hover:opacity-70 flex items-start pt-2.5"
                   title="Remove condition"
                   style={{ color: 'rgba(255,255,255,0.4)' }}>
                   <span style={{ fontSize: 16, lineHeight: 1 }}>×</span>
                 </button>
               </div>
 
-              {/* Body — outcome grid */}
+              {/* Body — outcome grid (only when not collapsed) */}
+              {!collapsed && (
               <div className="px-4 pt-3 pb-4"
                 style={{ borderTop: '1px solid rgba(234,88,12,0.15)', background: 'rgba(0,0,0,0.12)' }}>
                 <p className="text-[10px] font-semibold mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>
@@ -2581,8 +2590,10 @@ function ObjectiveStep({ data, onChange }) {
                   </div>
                 )}
               </div>
+              )}
             </div>
-          ))}
+            )
+          })}
 
           {/* Add Custom Exit Condition button */}
           <button type="button" onClick={() => setShowCustomExitModal(true)}
