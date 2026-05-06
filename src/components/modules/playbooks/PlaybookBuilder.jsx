@@ -97,7 +97,7 @@ const INITIAL = {
   gate_compliance_checks: [],
   gate_custom: [],
   // Objective & Success
-  goalType: '', primarySuccessEvents: [], exitConditions: [],
+  goalType: '', primarySuccessEvents: [], exitConditions: [], customExitConditions: [],
   kpiAssociation: '', strategyNotes: '',
   // Phases
   phases: [],
@@ -1721,6 +1721,84 @@ function AddCustomGateModal({ onClose, onSave }) {
   )
 }
 
+// ── Add Custom Exit Condition Modal ───────────────────────────────────────────
+function AddCustomExitConditionModal({ onClose, onSave }) {
+  const [name,        setName]        = useState('Custom Exit Condition')
+  const [description, setDescription] = useState('')
+
+  const handleSave = () => {
+    if (!description.trim()) return
+    onSave({
+      id: Date.now(),
+      name: name.trim() || 'Custom Exit Condition',
+      description: description.trim(),
+      outcomes: [],
+      nextPlaybook: '',
+    })
+    onClose()
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="w-full rounded-2xl flex flex-col"
+        style={{ maxWidth: 480, background: 'rgba(18,14,36,0.97)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 24px 64px rgba(0,0,0,0.6)' }}>
+
+        {/* Header — editable name */}
+        <div className="flex items-center gap-3 px-5 pt-5 pb-4"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <input
+            className="flex-1 bg-transparent text-sm font-bold outline-none"
+            style={{ color: 'var(--text-primary)' }}
+            value={name}
+            onChange={e => setName(e.target.value)}
+            placeholder="Exit condition name..."
+          />
+          <button type="button" onClick={onClose}
+            className="w-6 h-6 flex items-center justify-center rounded-md transition-colors hover:opacity-70"
+            style={{ color: 'var(--text-muted)', fontSize: 18, lineHeight: 1 }}>
+            ×
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4 space-y-4">
+          <div>
+            <p className="text-[11px] font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>Description</p>
+            <textarea
+              className="input-base w-full text-xs resize-none leading-relaxed"
+              rows={3}
+              placeholder="Describe the trigger condition that should stop this plan..."
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+            />
+            <p className="text-[10px] mt-1.5 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+              Once added, you can choose one or more outcomes for this condition (Archive, Escalate, Notify, Retry, or Apply Playbook).
+            </p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 px-5 py-4"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+          <button type="button" onClick={onClose}
+            className="px-4 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-70"
+            style={{ color: 'var(--text-muted)' }}>
+            Cancel
+          </button>
+          <button type="button" onClick={handleSave} disabled={!description.trim()}
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all hover:brightness-110 disabled:opacity-40"
+            style={{ background: 'linear-gradient(135deg,#ea580c,#f59e0b)', color: '#fff' }}>
+            <Plus size={12} /> Add Condition
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 // ── Step: Hard Gates ──────────────────────────────────────────────────────────
 function GatesStep({ data, onChange }) {
   const set = (key, val) => onChange({ ...data, [key]: val })
@@ -2002,6 +2080,20 @@ function ObjectiveStep({ data, onChange }) {
     if (entry.id === 'max-attempts' && entry.limitValue) return `${entry.limitValue} attempt${entry.limitValue === 1 ? '' : 's'}`
     return ''
   }
+
+  const customExits = data.customExitConditions || []
+  const [showCustomExitModal, setShowCustomExitModal] = useState(false)
+  const addCustomExit    = (entry) => set('customExitConditions', [...customExits, entry])
+  const removeCustomExit = (id)    => set('customExitConditions', customExits.filter(c => c.id !== id))
+  const toggleCustomExitOutcome = (id, outcomeId) =>
+    set('customExitConditions', customExits.map(c => {
+      if (c.id !== id) return c
+      const arr = c.outcomes || []
+      const next = arr.includes(outcomeId) ? arr.filter(x => x !== outcomeId) : [...arr, outcomeId]
+      return { ...c, outcomes: next, nextPlaybook: next.includes('apply-playbook') ? (c.nextPlaybook || '') : '' }
+    }))
+  const setCustomExitPlaybook = (id, nextPlaybook) =>
+    set('customExitConditions', customExits.map(c => c.id === id ? { ...c, nextPlaybook } : c))
   const successEvents = SUCCESS_EVENTS_MAP[data.goalType] || []
 
   return (
@@ -2296,6 +2388,110 @@ function ObjectiveStep({ data, onChange }) {
               </div>
             )
           })}
+
+          {/* Custom exit conditions — user-defined */}
+          {customExits.map(ce => (
+            <div key={ce.id} className="rounded-xl overflow-hidden"
+              style={{ border: '1.5px solid rgba(234,88,12,0.4)' }}>
+              {/* Header row */}
+              <div className="flex items-start gap-3 px-3 py-2.5"
+                style={{ background: 'rgba(234,88,12,0.06)' }}>
+                <div className="w-4 h-4 rounded flex items-center justify-center shrink-0 mt-0.5"
+                  style={{ background: '#fb923c', border: '1.5px solid #fb923c' }}>
+                  <svg width="8" height="6" viewBox="0 0 8 6"><path d="M1 3l2 2 4-4" stroke="#fff" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{ce.name}</p>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide shrink-0"
+                      style={{ background: 'rgba(234,88,12,0.15)', color: '#fb923c', border: '1px solid rgba(234,88,12,0.3)' }}>
+                      Custom
+                    </span>
+                  </div>
+                  <p className="text-[10px] mt-0.5 leading-relaxed" style={{ color: 'var(--text-muted)' }}>{ce.description}</p>
+                </div>
+                {(ce.outcomes || []).length > 0 && (
+                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end" style={{ maxWidth: 200 }}>
+                    {(ce.outcomes || []).map(oid => (
+                      <span key={oid} className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+                        style={{ background: 'rgba(124,92,252,0.18)', color: '#c4b5fd', border: '1px solid rgba(124,92,252,0.4)' }}>
+                        {FAILURE_OUTCOMES.find(f => f.id === oid)?.label || oid}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <button type="button" onClick={() => removeCustomExit(ce.id)}
+                  className="shrink-0 transition-opacity hover:opacity-70 mt-0.5"
+                  title="Remove condition"
+                  style={{ color: 'rgba(255,255,255,0.4)' }}>
+                  <span style={{ fontSize: 16, lineHeight: 1 }}>×</span>
+                </button>
+              </div>
+
+              {/* Body — outcome grid */}
+              <div className="px-4 pt-3 pb-4"
+                style={{ borderTop: '1px solid rgba(234,88,12,0.15)', background: 'rgba(0,0,0,0.12)' }}>
+                <p className="text-[10px] font-semibold mb-2" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                  OUTCOME(S) WHEN THIS CONDITION IS MET
+                </p>
+                <div className="grid grid-cols-2 gap-1.5 mb-2">
+                  {FAILURE_OUTCOMES.map(fo => {
+                    const active = (ce.outcomes || []).includes(fo.id)
+                    const Icon   = fo.icon
+                    return (
+                      <button key={fo.id} type="button"
+                        onClick={() => toggleCustomExitOutcome(ce.id, fo.id)}
+                        className="relative flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-all"
+                        style={{
+                          background: active
+                            ? 'linear-gradient(135deg, rgba(124,92,252,0.22), rgba(59,130,246,0.18))'
+                            : 'rgba(255,255,255,0.03)',
+                          border: `1.5px solid ${active ? 'rgba(124,92,252,0.65)' : 'rgba(255,255,255,0.08)'}`,
+                          boxShadow: active ? '0 2px 10px rgba(124,92,252,0.18)' : 'none',
+                        }}>
+                        <Icon size={12} style={{ color: active ? '#a78bfa' : 'rgba(255,255,255,0.35)', flexShrink: 0 }} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] font-semibold leading-tight"
+                            style={{ color: active ? '#fff' : 'rgba(255,255,255,0.6)' }}>
+                            {fo.label}
+                          </p>
+                          <p className="text-[9px] leading-tight" style={{ color: 'var(--text-muted)' }}>{fo.sub}</p>
+                        </div>
+                        {active && (
+                          <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0"
+                            style={{ background: '#7c5cfc', boxShadow: '0 0 0 2px rgba(124,92,252,0.25)' }}>
+                            <Check size={9} style={{ color: '#fff' }} strokeWidth={3} />
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {(ce.outcomes || []).includes('apply-playbook') && (
+                  <div className="mt-2 p-3 rounded-xl"
+                    style={{ background: 'rgba(37,99,235,0.07)', border: '1px solid rgba(37,99,235,0.22)' }}>
+                    <p className="text-[10px] font-semibold mb-1.5" style={{ color: '#93c5fd' }}>Select Next Playbook</p>
+                    <select className="input-base w-full text-xs" value={ce.nextPlaybook || ''}
+                      onChange={e => setCustomExitPlaybook(ce.id, e.target.value)}>
+                      <option value="">Choose a playbook…</option>
+                      {NEXT_PLAYBOOKS.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                    <p className="text-[10px] mt-1.5 leading-relaxed" style={{ color: '#60a5fa' }}>
+                      When <span style={{ fontWeight: 600 }}>"{ce.name}"</span> is triggered, this playbook will be automatically applied.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {/* Add Custom Exit Condition button */}
+          <button type="button" onClick={() => setShowCustomExitModal(true)}
+            className="w-full flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-[11px] font-semibold transition-all hover:brightness-110"
+            style={{ background: 'rgba(234,88,12,0.08)', color: '#fb923c', border: '1.5px dashed rgba(234,88,12,0.4)' }}>
+            <Plus size={11} /> Add Custom Exit Condition
+          </button>
         </div>
 
         {/* Footer note */}
@@ -2364,6 +2560,14 @@ function ObjectiveStep({ data, onChange }) {
           placeholder="Explain why this objective matters and how success should be interpreted..."
           value={data.strategyNotes} onChange={e => set('strategyNotes', e.target.value)} />
       </div>
+
+      {/* Custom Exit Condition modal */}
+      {showCustomExitModal && (
+        <AddCustomExitConditionModal
+          onClose={() => setShowCustomExitModal(false)}
+          onSave={addCustomExit}
+        />
+      )}
 
     </div>
   )
@@ -3622,15 +3826,22 @@ function ReviewStep({ data, onChange, onJump }) {
       pairs: [
         { label: 'Goal Type',       val: data.goalType },
         { label: 'Success Events',  val: (data.primarySuccessEvents || []).join(', ') },
-        { label: 'Exit Conditions', val: (data.exitConditions || []).length > 0
-            ? (data.exitConditions || []).map(e => {
-                const ec = EXIT_CONDITIONS.find(c => c.id === e.id)
-                const labels = (e.outcomes || [])
-                  .map(oid => FAILURE_OUTCOMES.find(f => f.id === oid)?.label)
-                  .filter(Boolean)
-                return labels.length > 0 ? `${ec?.label} → ${labels.join(', ')}` : ec?.label
-              }).join(' · ')
-            : '' },
+        { label: 'Exit Conditions', val: (() => {
+            const builtIns = (data.exitConditions || []).map(e => {
+              const ec = EXIT_CONDITIONS.find(c => c.id === e.id)
+              const labels = (e.outcomes || [])
+                .map(oid => FAILURE_OUTCOMES.find(f => f.id === oid)?.label)
+                .filter(Boolean)
+              return labels.length > 0 ? `${ec?.label} → ${labels.join(', ')}` : ec?.label
+            })
+            const customs = (data.customExitConditions || []).map(c => {
+              const labels = (c.outcomes || [])
+                .map(oid => FAILURE_OUTCOMES.find(f => f.id === oid)?.label)
+                .filter(Boolean)
+              return labels.length > 0 ? `${c.name} → ${labels.join(', ')}` : c.name
+            })
+            return [...builtIns, ...customs].join(' · ')
+          })() },
         { label: 'KPI Association', val: data.kpiAssociation },
         { label: 'Strategy Notes',  val: data.strategyNotes ? (data.strategyNotes.length > 38 ? data.strategyNotes.slice(0,38)+'…' : data.strategyNotes) : '' },
       ],
