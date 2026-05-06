@@ -2916,6 +2916,7 @@ function PhasesStep({ data, onChange }) {
   const setPhases = (p) => onChange({ ...data, phases: p })
   const updatePhase = (id, patch) => setPhases(phases.map(p => p.id === id ? { ...p, ...patch } : p))
   const removePhase = (id) => setPhases(phases.filter(p => p.id !== id))
+  const togglePhaseCollapsed = (id) => setPhases(phases.map(p => p.id === id ? { ...p, collapsed: !p.collapsed } : p))
 
   const [showTemplates, setShowTemplates] = useState(phases.length === 0)
   const [activeTemplate, setActiveTemplate] = useState(null)
@@ -3039,13 +3040,15 @@ function PhasesStep({ data, onChange }) {
         <div className="space-y-4">
           <SectionLabel>Sequential Phases</SectionLabel>
 
-          {phases.map((phase, i) => (
+          {phases.map((phase, i) => {
+            const collapsed = !!phase.collapsed
+            return (
               <div key={phase.id} className="rounded-xl overflow-hidden"
                 style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
 
                 {/* Card header — editable name */}
                 <div className="flex items-center gap-3 px-4 py-3"
-                  style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.01)' }}>
+                  style={{ borderBottom: collapsed ? 'none' : '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.01)' }}>
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0"
                     style={{ background: 'rgba(124,92,252,0.15)', border: '1px solid rgba(124,92,252,0.25)', color: '#a78bfa' }}>
                     {i + 1}
@@ -3057,6 +3060,12 @@ function PhasesStep({ data, onChange }) {
                     onChange={e => updatePhase(phase.id, { name: e.target.value })}
                     placeholder={`Phase ${i + 1} name...`}
                   />
+                  <button type="button" onClick={() => togglePhaseCollapsed(phase.id)}
+                    className="opacity-50 hover:opacity-90 transition-opacity shrink-0"
+                    title={collapsed ? 'Expand phase' : 'Collapse phase'}>
+                    <ChevronDown size={13} style={{ color: 'var(--text-muted)' }}
+                      className={`transition-transform ${collapsed ? '' : 'rotate-180'}`} />
+                  </button>
                   <button type="button" onClick={() => removePhase(phase.id)}
                     className="opacity-35 hover:opacity-80 transition-opacity shrink-0">
                     <Trash2 size={12} style={{ color: '#f87171' }} />
@@ -3064,6 +3073,7 @@ function PhasesStep({ data, onChange }) {
                 </div>
 
                 {/* Card body */}
+                {!collapsed && (
                 <div className="px-4 py-4 space-y-4">
 
                   {/* Goal */}
@@ -3305,8 +3315,10 @@ function PhasesStep({ data, onChange }) {
                     </div>
                   </Accordion>
                 </div>
+                )}
               </div>
-          ))}
+            )
+          })}
 
           {/* Add Phase */}
           <button type="button" onClick={addBlankPhase}
