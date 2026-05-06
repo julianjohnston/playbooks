@@ -1522,14 +1522,46 @@ const CUSTOM_GATE_OUTCOMES = [
   'Mark Not Eligible',
 ]
 
+const CUSTOM_GATE_DATA_SECTIONS = [
+  'Personal Information',
+  'Contact Information',
+  'Vehicle Information',
+  'Account Information',
+  'Financial Information',
+  'Payment History',
+  'Loan / Credit Details',
+  'Insurance Coverage',
+  'Interaction History',
+  'Communication Preferences',
+  'Service History',
+  'Warranty Information',
+  'Marketing Engagement',
+  'Loyalty / Rewards',
+  'Subscription Status',
+  'Support Cases',
+  'Document Library',
+  'Consent & Compliance',
+  'Risk Profile',
+  'Lifecycle Events',
+]
+
 function AddCustomGateModal({ onClose, onSave }) {
   const [name,        setName]        = useState('Custom Gate')
   const [description, setDescription] = useState('')
   const [ifNotMet,    setIfNotMet]    = useState('Suppress Playbook')
+  const [dataSections,        setDataSections]        = useState([])
+  const [sectionSearch,       setSectionSearch]       = useState('')
+  const [sectionDropdownOpen, setSectionDropdownOpen] = useState(false)
+
+  const filteredSections = CUSTOM_GATE_DATA_SECTIONS.filter(s =>
+    s.toLowerCase().includes(sectionSearch.toLowerCase()) && !dataSections.includes(s),
+  )
+  const addSection    = (s) => { setDataSections([...dataSections, s]); setSectionSearch('') }
+  const removeSection = (s) => setDataSections(dataSections.filter(x => x !== s))
 
   const handleSave = () => {
     if (!description.trim()) return
-    onSave({ id: Date.now(), name: name.trim() || 'Custom Gate', description: description.trim(), ifNotMet })
+    onSave({ id: Date.now(), name: name.trim() || 'Custom Gate', description: description.trim(), ifNotMet, dataSections })
     onClose()
   }
 
@@ -1578,6 +1610,64 @@ function AddCustomGateModal({ onClose, onSave }) {
               Clearly explain the condition and its intent. NBA and the execution engine will use this to determine
               whether to proceed, defer, or block actions.
             </p>
+          </div>
+
+          {/* Scope to data sections (optional) */}
+          <div>
+            <p className="text-[11px] font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>Scope to data sections</p>
+            <div className="relative">
+              <div className="input-base flex items-center gap-2"
+                onClick={() => setSectionDropdownOpen(true)}>
+                <Search size={12} style={{ color: 'var(--text-muted)' }} className="shrink-0" />
+                <input
+                  className="bg-transparent outline-none flex-1 text-xs min-w-0"
+                  style={{ color: 'var(--text-primary)' }}
+                  placeholder="Search data sections..."
+                  value={sectionSearch}
+                  onChange={e => { setSectionSearch(e.target.value); setSectionDropdownOpen(true) }}
+                  onFocus={() => setSectionDropdownOpen(true)}
+                  onBlur={() => setTimeout(() => setSectionDropdownOpen(false), 150)}
+                />
+                <ChevronDown size={12} style={{ color: 'var(--text-muted)' }}
+                  className={`shrink-0 transition-transform ${sectionDropdownOpen ? 'rotate-180' : ''}`} />
+              </div>
+              {sectionDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1 z-10 max-h-56 overflow-y-auto rounded-lg"
+                  style={{ background: 'rgba(18,14,36,0.98)', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+                  {filteredSections.length === 0 ? (
+                    <div className="px-3 py-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                      {sectionSearch ? 'No matching sections.' : 'All sections selected.'}
+                    </div>
+                  ) : filteredSections.map(s => (
+                    <button type="button" key={s}
+                      onMouseDown={e => { e.preventDefault(); addSection(s) }}
+                      className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 transition-colors hover:bg-white/5"
+                      style={{ color: 'var(--text-primary)' }}>
+                      <Plus size={11} style={{ color: 'var(--text-muted)' }} className="shrink-0" />
+                      <span className="truncate">{s}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {dataSections.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {dataSections.map(s => (
+                  <span key={s} className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full"
+                    style={{ background: 'rgba(124,92,252,0.12)', color: '#a78bfa', border: '1px solid rgba(124,92,252,0.25)' }}>
+                    {s}
+                    <button type="button" onClick={() => removeSection(s)}
+                      className="opacity-60 hover:opacity-100 ml-0.5 flex items-center">
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[10px] mt-1.5" style={{ color: 'var(--text-muted)' }}>
+                No sections selected — the full customer profile will be used.
+              </p>
+            )}
           </div>
 
           {/* If not met */}
