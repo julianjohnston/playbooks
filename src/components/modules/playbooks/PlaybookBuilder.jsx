@@ -2941,7 +2941,7 @@ function PhasesStep({ data, onChange }) {
       {/* ── Phase cards ── */}
       {phases.length > 0 && !showTemplates && (
         <div className="space-y-4">
-          <SectionLabel>Phases</SectionLabel>
+          <SectionLabel>Sequential Phases</SectionLabel>
 
           {phases.map((phase, i) => (
               <div key={phase.id} className="rounded-xl overflow-hidden"
