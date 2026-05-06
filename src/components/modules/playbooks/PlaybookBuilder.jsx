@@ -177,7 +177,8 @@ const SIDEBAR_FIELDS = {
     { key: 'strategyNotes',       label: 'Strategy Notes',  required: false },
   ],
   phases:    [
-    { key: 'phases', label: 'Phases defined', required: true, isArray: true },
+    { key: 'phases',       label: 'Sequential phases', required: true,  isArray: true },
+    { key: 'signalPhases', label: 'Signal phases',     required: false, isArray: true },
   ],
   trust:     [
     { key: 'trustPreset',         label: 'Trust Policy',     required: true  },
