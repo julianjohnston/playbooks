@@ -1725,6 +1725,29 @@ function AddCustomGateModal({ onClose, onSave }) {
 function AddCustomExitConditionModal({ onClose, onSave }) {
   const [name,        setName]        = useState('Custom Exit Condition')
   const [description, setDescription] = useState('')
+  const [dataSections,        setDataSections]        = useState([])
+  const [sectionSearch,       setSectionSearch]       = useState('')
+  const [sectionDropdownOpen, setSectionDropdownOpen] = useState(false)
+  const sectionWrapRef = useRef(null)
+
+  const filteredSections = CUSTOM_GATE_DATA_SECTIONS.filter(s =>
+    s.toLowerCase().includes(sectionSearch.toLowerCase()),
+  )
+  const toggleSection = (s) => setDataSections(
+    dataSections.includes(s) ? dataSections.filter(x => x !== s) : [...dataSections, s],
+  )
+  const removeSection = (s) => setDataSections(dataSections.filter(x => x !== s))
+
+  useEffect(() => {
+    if (!sectionDropdownOpen) return
+    const handler = (e) => {
+      if (sectionWrapRef.current && !sectionWrapRef.current.contains(e.target)) {
+        setSectionDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [sectionDropdownOpen])
 
   const handleSave = () => {
     if (!description.trim()) return
@@ -1732,6 +1755,7 @@ function AddCustomExitConditionModal({ onClose, onSave }) {
       id: Date.now(),
       name: name.trim() || 'Custom Exit Condition',
       description: description.trim(),
+      dataSections,
       outcomes: [],
       nextPlaybook: '',
     })
@@ -1764,8 +1788,14 @@ function AddCustomExitConditionModal({ onClose, onSave }) {
 
         {/* Body */}
         <div className="px-5 py-4 space-y-4">
+
+          {/* Description */}
           <div>
-            <p className="text-[11px] font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>Description</p>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-[11px] font-semibold" style={{ color: 'var(--text-primary)' }}>Description</p>
+              <AIAssistWidget fieldKey="exitConditionDescription" currentValue={description}
+                onAccept={val => setDescription(val)} />
+            </div>
             <textarea
               className="input-base w-full text-xs resize-none leading-relaxed"
               rows={3}
@@ -1774,8 +1804,76 @@ function AddCustomExitConditionModal({ onClose, onSave }) {
               onChange={e => setDescription(e.target.value)}
             />
             <p className="text-[10px] mt-1.5 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-              Once added, you can choose one or more outcomes for this condition (Archive, Escalate, Notify, Retry, or Apply Playbook).
+              Clearly explain when this condition should fire and why. NBA and the execution engine use this to decide
+              whether the plan should stop, defer, or hand off.
             </p>
+          </div>
+
+          {/* Scope to data sections (optional) */}
+          <div>
+            <p className="text-[11px] font-semibold mb-1.5" style={{ color: 'var(--text-primary)' }}>Scope to data sections</p>
+            <div className="relative" ref={sectionWrapRef}>
+              <div className="input-base flex items-center gap-2 cursor-pointer"
+                onClick={() => setSectionDropdownOpen(o => !o)}>
+                <Search size={12} style={{ color: 'var(--text-muted)' }} className="shrink-0" />
+                <input
+                  className="bg-transparent outline-none flex-1 text-xs min-w-0 cursor-pointer"
+                  style={{ color: 'var(--text-primary)' }}
+                  placeholder="Search data sections..."
+                  value={sectionSearch}
+                  onChange={e => { setSectionSearch(e.target.value); setSectionDropdownOpen(true) }}
+                  onClick={e => e.stopPropagation()}
+                />
+                <ChevronDown size={12} style={{ color: 'var(--text-muted)' }}
+                  className={`shrink-0 transition-transform ${sectionDropdownOpen ? 'rotate-180' : ''}`} />
+              </div>
+              {sectionDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full mt-1 z-10 max-h-56 overflow-y-auto rounded-lg"
+                  style={{ background: 'rgba(18,14,36,0.98)', border: '1px solid rgba(255,255,255,0.12)', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+                  {filteredSections.length === 0 ? (
+                    <div className="px-3 py-2 text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                      No matching sections.
+                    </div>
+                  ) : filteredSections.map(s => {
+                    const isSelected = dataSections.includes(s)
+                    return (
+                      <button type="button" key={s}
+                        onClick={e => { e.stopPropagation(); toggleSection(s) }}
+                        className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 transition-colors"
+                        style={{
+                          color: 'var(--text-primary)',
+                          background: isSelected ? 'rgba(16,185,129,0.08)' : 'transparent',
+                        }}
+                        onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = isSelected ? 'rgba(16,185,129,0.08)' : 'transparent' }}>
+                        {isSelected
+                          ? <Check size={12} style={{ color: '#34d399' }} className="shrink-0" strokeWidth={2.5} />
+                          : <Plus  size={11} style={{ color: 'var(--text-muted)' }} className="shrink-0" />}
+                        <span className="truncate" style={{ color: isSelected ? '#34d399' : 'var(--text-primary)', fontWeight: isSelected ? 500 : 400 }}>{s}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+            {dataSections.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {dataSections.map(s => (
+                  <span key={s} className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full"
+                    style={{ background: 'rgba(124,92,252,0.12)', color: '#a78bfa', border: '1px solid rgba(124,92,252,0.25)' }}>
+                    {s}
+                    <button type="button" onClick={() => removeSection(s)}
+                      className="opacity-60 hover:opacity-100 ml-0.5 flex items-center">
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[10px] mt-1.5" style={{ color: 'var(--text-muted)' }}>
+                No sections selected — the full customer profile will be used.
+              </p>
+            )}
           </div>
         </div>
 
