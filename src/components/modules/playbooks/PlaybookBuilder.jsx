@@ -2759,6 +2759,22 @@ function PhasesStep({ data, onChange }) {
     updatePhase(phaseId, { channels: ch.includes(chId) ? ch.filter(c => c !== chId) : [...ch, chId] })
   }
 
+  const addActionSlot = (phaseId) => {
+    const phase = phases.find(p => p.id === phaseId)
+    const slots = phase?.actionSlots || []
+    updatePhase(phaseId, { actionSlots: [...slots, { id: Date.now(), name: '', mode: 'template', fixedContent: '' }] })
+  }
+  const removeActionSlot = (phaseId, slotId) => {
+    const phase = phases.find(p => p.id === phaseId)
+    const slots = phase?.actionSlots || []
+    updatePhase(phaseId, { actionSlots: slots.filter(s => s.id !== slotId) })
+  }
+  const updateActionSlot = (phaseId, slotId, patch) => {
+    const phase = phases.find(p => p.id === phaseId)
+    const slots = phase?.actionSlots || []
+    updatePhase(phaseId, { actionSlots: slots.map(s => s.id === slotId ? { ...s, ...patch } : s) })
+  }
+
   return (
     <div className="space-y-5">
 
@@ -2949,9 +2965,84 @@ function PhasesStep({ data, onChange }) {
 
                   {/* Advanced settings — collapsed by default */}
                   <Accordion label="Advanced settings">
-                    <p className="text-[10px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                      No advanced settings configured for this phase yet.
-                    </p>
+                    <div className="space-y-3">
+                      <p className="text-[11px] font-bold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
+                        Action Slots
+                      </p>
+
+                      {(phase.actionSlots || []).length > 0 && (
+                        <div className="space-y-2">
+                          {(phase.actionSlots || []).map((slot, idx) => (
+                            <div key={slot.id} className="rounded-lg p-3 space-y-2.5"
+                              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }}>
+
+                              {/* Slot name + remove */}
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  className="input-base flex-1 text-xs"
+                                  placeholder={`Slot ${idx + 1} name...`}
+                                  value={slot.name || ''}
+                                  onChange={e => updateActionSlot(phase.id, slot.id, { name: e.target.value })}
+                                />
+                                <button type="button" onClick={() => removeActionSlot(phase.id, slot.id)}
+                                  className="shrink-0 transition-opacity hover:opacity-80"
+                                  title="Remove slot"
+                                  style={{ color: 'rgba(248,113,113,0.7)' }}>
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+
+                              {/* Content mode selector */}
+                              <div>
+                                <p className="text-[10px] font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Content mode</p>
+                                <div className="grid grid-cols-3 gap-1.5">
+                                  {[
+                                    { id: 'template', label: 'Template' },
+                                    { id: 'hybrid',   label: 'Hybrid' },
+                                    { id: 'generate', label: 'Generate' },
+                                  ].map(m => {
+                                    const active = (slot.mode || 'template') === m.id
+                                    return (
+                                      <button key={m.id} type="button"
+                                        onClick={() => updateActionSlot(phase.id, slot.id, { mode: m.id })}
+                                        className="px-2 py-1.5 rounded-md text-[11px] font-semibold transition-all"
+                                        style={{
+                                          background: active ? 'rgba(124,92,252,0.15)' : 'rgba(255,255,255,0.03)',
+                                          border: `1px solid ${active ? 'rgba(124,92,252,0.5)' : 'rgba(255,255,255,0.08)'}`,
+                                          color: active ? '#a78bfa' : 'var(--text-muted)',
+                                        }}>
+                                        {m.label}
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+
+                              {/* Fixed content — only when Template or Hybrid */}
+                              {((slot.mode || 'template') === 'template' || (slot.mode || 'template') === 'hybrid') && (
+                                <div>
+                                  <p className="text-[10px] font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>Fixed content</p>
+                                  <textarea
+                                    className="input-base w-full text-xs resize-none leading-relaxed"
+                                    rows={3}
+                                    placeholder="Enter the fixed content this slot will use..."
+                                    value={slot.fixedContent || ''}
+                                    onChange={e => updateActionSlot(phase.id, slot.id, { fixedContent: e.target.value })}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <button type="button" onClick={() => addActionSlot(phase.id)}
+                        className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-semibold transition-all hover:brightness-110"
+                        style={{ background: 'rgba(124,92,252,0.07)', color: '#a78bfa', border: '1px dashed rgba(124,92,252,0.35)' }}>
+                        <Plus size={11} /> Add slot
+                      </button>
+                    </div>
                   </Accordion>
                 </div>
               </div>
