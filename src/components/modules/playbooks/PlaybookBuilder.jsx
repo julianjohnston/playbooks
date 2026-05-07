@@ -2235,9 +2235,6 @@ function ObjectiveStep({ data, onChange }) {
               ))}
             </div>
           )}
-          <p className="text-[10px] mt-1.5" style={{ color: '#60a5fa' }}>
-            • Secondary signals help NBA adapt the plan over time
-          </p>
         </div>
         )}
       </div>
