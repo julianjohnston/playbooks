@@ -7,7 +7,7 @@ import {
   ArrowLeft, ChevronRight, ChevronLeft, Save, CheckCircle, Check,
   FileText, Sparkles, Shield, Target, Layers, Zap, Eye,
   Globe, Building2, Home, User, Tag, AlignLeft, Hash, X,
-  ChevronDown, ChevronUp, AlertTriangle, Plus, Trash2,
+  ChevronDown, ChevronUp, AlertTriangle, Plus, Trash2, Pencil,
   Clock, Activity, BarChart2, Lock, BookOpen,
   UserCheck, Users, MessageSquare, Search,
   Flag, XCircle, PlayCircle, GitBranch, RotateCcw, Archive,
@@ -2983,6 +2983,235 @@ function TemplateSelector({ templates, value, onChange }) {
   )
 }
 
+// ── Phase summary synthesizer (delta 24) ─────────────────────────────────────
+const TONE_BY_TYPE = {
+  urgent:       'High-urgency',
+  followup:     'Follow-up',
+  nurture:      'Nurture',
+  reengagement: 'Re-engagement',
+  custom:       '',
+}
+function generatePhaseSummary(phase) {
+  if (!phase) return ''
+  const tone = TONE_BY_TYPE[phase.icon] || ''
+  const channelLabels = (phase.channels || [])
+    .map(id => PHASE_CHANNELS.find(c => c.id === id)?.label)
+    .filter(Boolean)
+  const channelText = channelLabels.length === 0
+    ? 'Multi-channel'
+    : channelLabels.length === 1
+      ? channelLabels[0]
+      : channelLabels.length === 2
+        ? `${channelLabels[0]} and ${channelLabels[1]}`
+        : `${channelLabels.slice(0, -1).join(', ')} and ${channelLabels.slice(-1)}`
+
+  const lead = [tone && tone.toLowerCase(), channelText].filter(Boolean).join(' ')
+  const head = lead ? `${lead.charAt(0).toUpperCase() + lead.slice(1)} outreach` : 'Outreach'
+
+  const duration = phase.duration ? `over ${phase.duration} ${(phase.durationUnit || 'Days').toLowerCase()}` : ''
+  const attempts = phase.maxAttempts ? `up to ${phase.maxAttempts} attempt${phase.maxAttempts === '1' || phase.maxAttempts === 1 ? '' : 's'}` : ''
+  const sentence1 = [head, duration, attempts].filter(Boolean).join(', ').replace(' over ,', ' over,') + '.'
+
+  const slots = phase.actionSlots || []
+  const slotSentences = slots.map((slot, i) => {
+    const timing = slot.timingValue
+      ? `${slot.timingValue} ${slot.timingUnit || 'minutes'}`
+      : 'immediately'
+    const prefix = i === 0
+      ? slot.timingValue ? `First contact sends after ${timing}` : `First contact sends immediately`
+      : slot.timingValue ? `Follow-up sends ${timing} after the previous slot` : `Follow-up sends immediately after`
+    const mode = (slot.mode || 'template') === 'template'
+      ? 'using a tenant template'
+      : (slot.mode === 'hybrid')
+        ? 'with a fixed message and agent-generated content'
+        : 'with fully agent-generated content'
+    return `${prefix} ${mode}`
+  })
+  const sentence2 = slotSentences.length > 0 ? slotSentences.join('. ') + '.' : ''
+
+  return [sentence1, sentence2].filter(Boolean).join(' ')
+}
+
+// ── Phase Slide-Out Panel (delta 23) ─────────────────────────────────────────
+function PhaseSlideOut({ phase, onUpdate, onClose, onSave, onAddSlot, onRemoveSlot, onUpdateSlot, onToggleChannel }) {
+  if (!phase) return null
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex justify-end"
+      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+      onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="h-full flex flex-col"
+        style={{ width: 640, maxWidth: '100vw', background: 'rgba(18,14,36,0.98)', borderLeft: '1px solid rgba(255,255,255,0.1)', boxShadow: '-12px 0 40px rgba(0,0,0,0.5)' }}>
+
+        {/* Header */}
+        <div className="flex items-center gap-3 px-6 pt-5 pb-4 shrink-0"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(124,92,252,0.15)', border: '1px solid rgba(124,92,252,0.3)', color: '#a78bfa' }}>
+            <Layers size={14} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Edit Phase</p>
+            <p className="text-sm font-bold truncate" style={{ color: 'var(--text-primary)' }}>{phase.name || 'Untitled phase'}</p>
+          </div>
+          <button type="button" onClick={onClose}
+            className="w-7 h-7 rounded-md flex items-center justify-center hover:opacity-70 transition-opacity shrink-0"
+            style={{ color: 'var(--text-muted)' }}>
+            <X size={15} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+
+          <div>
+            <FieldLabel>Phase Name</FieldLabel>
+            <input type="text" className="input-base w-full text-xs"
+              placeholder="Phase name..."
+              value={phase.name || ''} onChange={e => onUpdate({ name: e.target.value })} />
+          </div>
+
+          <div>
+            <FieldLabel required>Phase Goal</FieldLabel>
+            <input type="text" className="input-base w-full text-xs"
+              placeholder="What should this phase achieve?"
+              value={phase.goal || ''} onChange={e => onUpdate({ goal: e.target.value })} />
+          </div>
+
+          <div>
+            <FieldLabel>Duration & Pacing</FieldLabel>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <input type="number" min="1" className="input-base w-full text-xs" placeholder="e.g. 7"
+                  value={phase.duration || ''} onChange={e => onUpdate({ duration: e.target.value })} />
+                <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>Duration</p>
+              </div>
+              <div>
+                <select className="input-base w-full text-xs" value={phase.durationUnit || 'Days'}
+                  onChange={e => onUpdate({ durationUnit: e.target.value })}>
+                  <option>Days</option><option>Weeks</option><option>Months</option>
+                </select>
+                <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>Unit</p>
+              </div>
+              <div>
+                <input type="number" min="1" className="input-base w-full text-xs" placeholder="e.g. 3"
+                  value={phase.maxAttempts || ''} onChange={e => onUpdate({ maxAttempts: e.target.value })} />
+                <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>Max attempts / customer</p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <FieldLabel hint="Click channels in order of preference — first selected becomes Priority 1">Channel Priority</FieldLabel>
+            <div className="flex flex-wrap gap-2">
+              {PHASE_CHANNELS.map(ch => {
+                const channels = phase.channels || []
+                const idx      = channels.indexOf(ch.id)
+                const active   = idx !== -1
+                const priority = idx + 1
+                return (
+                  <button key={ch.id} type="button" onClick={() => onToggleChannel(ch.id)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all"
+                    style={{
+                      background: active ? ch.bg : 'rgba(255,255,255,0.04)',
+                      color:      active ? ch.color : 'var(--text-muted)',
+                      border:     `1.5px solid ${active ? ch.border : 'rgba(255,255,255,0.1)'}`,
+                    }}>
+                    {active && (
+                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold leading-none shrink-0"
+                        style={{ background: ch.color, color: '#fff' }}>
+                        {priority}
+                      </span>
+                    )}
+                    {ch.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Customer preference override toggle */}
+          <button type="button" role="switch" aria-checked={!!phase.customerPreferenceOverride}
+            onClick={() => onUpdate({ customerPreferenceOverride: !phase.customerPreferenceOverride })}
+            className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all"
+            style={{
+              background: phase.customerPreferenceOverride ? 'rgba(124,92,252,0.08)' : 'rgba(255,255,255,0.02)',
+              border: `1px solid ${phase.customerPreferenceOverride ? 'rgba(124,92,252,0.4)' : 'rgba(255,255,255,0.07)'}`,
+            }}>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Customer preference override</p>
+              <p className="text-[11px] leading-relaxed mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                When on, the customer's preferred channel takes priority over the order above.
+              </p>
+            </div>
+            <div className="relative shrink-0 transition-colors duration-150"
+              style={{
+                width: 36, height: 20, borderRadius: 999,
+                background: phase.customerPreferenceOverride ? '#7c5cfc' : 'rgba(255,255,255,0.12)',
+                boxShadow: phase.customerPreferenceOverride ? '0 0 0 1px rgba(124,92,252,0.6), 0 2px 8px rgba(124,92,252,0.35)' : 'inset 0 0 0 1px rgba(255,255,255,0.08)',
+              }}>
+              <div className="absolute top-0.5 transition-all duration-150"
+                style={{
+                  left: phase.customerPreferenceOverride ? 18 : 2,
+                  width: 16, height: 16, borderRadius: 999,
+                  background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.35)',
+                }} />
+            </div>
+          </button>
+
+          {/* Agent Guidance */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <FieldLabel>Agent Guidance</FieldLabel>
+              <AIAssistWidget fieldKey="phaseNotes" currentValue={phase.notes || ''}
+                onAccept={val => onUpdate({ notes: val })} />
+            </div>
+            <textarea className="input-base w-full text-xs resize-none" rows={3}
+              placeholder="Describe the purpose, tone, and intent of this phase — this becomes the agent's primary instruction for content creation."
+              value={phase.notes || ''} onChange={e => onUpdate({ notes: e.target.value })} />
+          </div>
+
+          {/* Additional agent instructions */}
+          <div>
+            <FieldLabel>Additional Agent Instructions</FieldLabel>
+            <textarea className="input-base w-full text-xs resize-none" rows={3}
+              placeholder="Add any extra constraints, do/don't rules, or context the agent should layer on top of the guidance above."
+              value={phase.additionalInstructions || ''} onChange={e => onUpdate({ additionalInstructions: e.target.value })} />
+          </div>
+
+          {/* Advanced settings — action slots fully expanded inline (no nesting) */}
+          <div>
+            <p className="text-[11px] font-bold tracking-widest uppercase mb-3" style={{ color: 'var(--text-muted)' }}>
+              Advanced settings
+            </p>
+            <ActionSlotsBlock
+              slots={phase.actionSlots}
+              onAdd={onAddSlot}
+              onRemove={onRemoveSlot}
+              onUpdate={onUpdateSlot}
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 px-6 py-4 shrink-0"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+          <button type="button" onClick={onClose}
+            className="px-4 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-70"
+            style={{ color: 'var(--text-muted)' }}>
+            Cancel
+          </button>
+          <button type="button" onClick={onSave}
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all hover:brightness-110"
+            style={{ background: 'linear-gradient(135deg,#7c5cfc,#3b82f6)', color: '#fff' }}>
+            <Save size={12} /> Save phase
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 // ── Step: Phases ──────────────────────────────────────────────────────────────
 function PhasesStep({ data, onChange }) {
   const set = (key, val) => onChange({ ...data, [key]: val })
@@ -2997,15 +3226,31 @@ function PhasesStep({ data, onChange }) {
 
   const addBlankPhase = () => {
     const id = Date.now()
-    setPhases([...phases, { id, name: `Phase ${phases.length + 1}`, icon: 'custom', goal: '', duration: '', durationUnit: 'Days', maxAttempts: '', channels: [], notes: '' }])
+    setPhases([...phases, { id, name: `Phase ${phases.length + 1}`, icon: 'custom', goal: '', duration: '', durationUnit: 'Days', maxAttempts: '', channels: [], notes: '', customerPreferenceOverride: false, additionalInstructions: '', aiSummary: '' }])
     setShowTemplates(false)
+    setEditingPhaseId(id)
   }
 
   const applyTemplate = (tpl) => {
-    const newPhases = tpl.phases.map((p, i) => ({ ...p, id: Date.now() + i }))
+    const newPhases = tpl.phases.map((p, i) => ({
+      ...p,
+      id: Date.now() + i,
+      customerPreferenceOverride: p.customerPreferenceOverride ?? false,
+      additionalInstructions: p.additionalInstructions ?? '',
+      aiSummary: '',
+    }))
     setPhases(newPhases)
     setActiveTemplate(tpl.id)
     setShowTemplates(false)
+  }
+
+  const [editingPhaseId, setEditingPhaseId] = useState(null)
+  const editingPhase = phases.find(p => p.id === editingPhaseId) || null
+  const closePhaseSlideOut = () => setEditingPhaseId(null)
+  const savePhaseSlideOut = () => {
+    if (!editingPhase) return
+    updatePhase(editingPhase.id, { aiSummary: generatePhaseSummary(editingPhase) })
+    setEditingPhaseId(null)
   }
 
   const toggleChannel = (phaseId, chId) => {
@@ -3332,106 +3577,30 @@ function PhasesStep({ data, onChange }) {
           <SectionLabel>Sequential Phases</SectionLabel>
 
           {phases.map((phase, i) => {
-            const collapsed = !!phase.collapsed
+            const summary    = phase.aiSummary || generatePhaseSummary(phase)
+            const channels   = phase.channels || []
+            const durationStr = phase.duration ? `${phase.duration} ${phase.durationUnit || 'Days'}` : ''
+            const attemptsStr = phase.maxAttempts ? `Max ${phase.maxAttempts} attempt${phase.maxAttempts === '1' || phase.maxAttempts === 1 ? '' : 's'}` : ''
+            const meta = [durationStr, attemptsStr].filter(Boolean).join(' · ')
             return (
-              <div key={phase.id} className="rounded-xl overflow-hidden"
+              <div key={phase.id} role="button" tabIndex={0}
+                onClick={() => setEditingPhaseId(phase.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setEditingPhaseId(phase.id) } }}
+                className="rounded-xl cursor-pointer transition-all hover:brightness-110"
                 style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
-
-                {/* Card header — editable name */}
-                <div className="flex items-center gap-3 px-4 py-3"
-                  style={{ borderBottom: collapsed ? 'none' : '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.01)' }}>
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0"
+                <div className="flex items-start gap-3 px-4 py-3.5">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5"
                     style={{ background: 'rgba(124,92,252,0.15)', border: '1px solid rgba(124,92,252,0.25)', color: '#a78bfa' }}>
                     {i + 1}
                   </div>
-                  <input
-                    className="flex-1 bg-transparent text-xs font-bold outline-none"
-                    style={{ color: 'var(--text-primary)' }}
-                    value={phase.name}
-                    onChange={e => updatePhase(phase.id, { name: e.target.value })}
-                    placeholder={`Phase ${i + 1} name...`}
-                  />
-                  <button type="button" onClick={() => togglePhaseCollapsed(phase.id)}
-                    className="opacity-50 hover:opacity-90 transition-opacity shrink-0"
-                    title={collapsed ? 'Expand phase' : 'Collapse phase'}>
-                    <ChevronDown size={13} style={{ color: 'var(--text-muted)' }}
-                      className={`transition-transform ${collapsed ? '' : 'rotate-180'}`} />
-                  </button>
-                  <button type="button" onClick={() => removePhase(phase.id)}
-                    className="opacity-35 hover:opacity-80 transition-opacity shrink-0">
-                    <Trash2 size={12} style={{ color: '#f87171' }} />
-                  </button>
-                </div>
-
-                {/* Card body */}
-                {!collapsed && (
-                <div className="px-4 py-4 space-y-4">
-
-                  {/* Goal */}
-                  <div>
-                    <FieldLabel required>Phase Goal</FieldLabel>
-                    <input type="text" className="input-base w-full text-xs"
-                      placeholder="What should this phase achieve?"
-                      value={phase.goal || ''} onChange={e => updatePhase(phase.id, { goal: e.target.value })} />
-                  </div>
-
-                  {/* Duration · Unit · Max Attempts — with individual sub-labels */}
-                  <div>
-                    <FieldLabel>Duration & Pacing</FieldLabel>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <input type="number" min="1" className="input-base w-full text-xs" placeholder="e.g. 7"
-                          value={phase.duration || ''} onChange={e => updatePhase(phase.id, { duration: e.target.value })} />
-                        <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>Duration</p>
-                      </div>
-                      <div>
-                        <select className="input-base w-full text-xs" value={phase.durationUnit || 'Days'}
-                          onChange={e => updatePhase(phase.id, { durationUnit: e.target.value })}>
-                          <option>Days</option><option>Weeks</option><option>Months</option>
-                        </select>
-                        <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>Unit</p>
-                      </div>
-                      <div>
-                        <input type="number" min="1" className="input-base w-full text-xs" placeholder="e.g. 3"
-                          value={phase.maxAttempts || ''} onChange={e => updatePhase(phase.id, { maxAttempts: e.target.value })} />
-                        <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>Max attempts / customer</p>
-                      </div>
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-xs font-bold truncate" style={{ color: 'var(--text-primary)' }}>{phase.name || 'Untitled phase'}</p>
+                      {meta && <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{meta}</span>}
                     </div>
-                  </div>
-
-                  {/* Channel Priority — numbered by selection order */}
-                  <div>
-                    <FieldLabel hint="Click channels in order of preference — first selected becomes Priority 1">
-                      Channel Priority
-                    </FieldLabel>
-                    <div className="flex flex-wrap gap-2">
-                      {PHASE_CHANNELS.map(ch => {
-                        const channels = phase.channels || []
-                        const idx      = channels.indexOf(ch.id)
-                        const active   = idx !== -1
-                        const priority = idx + 1
-                        return (
-                          <button key={ch.id} type="button" onClick={() => toggleChannel(phase.id, ch.id)}
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all"
-                            style={{
-                              background: active ? ch.bg : 'rgba(255,255,255,0.04)',
-                              color:      active ? ch.color : 'var(--text-muted)',
-                              border:     `1.5px solid ${active ? ch.border : 'rgba(255,255,255,0.1)'}`,
-                            }}>
-                            {active && (
-                              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-bold leading-none shrink-0"
-                                style={{ background: ch.color, color: '#fff' }}>
-                                {priority}
-                              </span>
-                            )}
-                            {ch.label}
-                          </button>
-                        )
-                      })}
-                    </div>
-                    {(phase.channels || []).length > 0 && (
-                      <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
-                        {(phase.channels || []).map((chId, idx) => {
+                    {channels.length > 0 && (
+                      <div className="flex flex-wrap gap-x-3 gap-y-1">
+                        {channels.map((chId, idx) => {
                           const ch = PHASE_CHANNELS.find(c => c.id === chId)
                           if (!ch) return null
                           return (
@@ -3443,31 +3612,31 @@ function PhasesStep({ data, onChange }) {
                         })}
                       </div>
                     )}
+                    {phase.goal && (
+                      <p className="text-[11px] truncate" style={{ color: 'var(--text-secondary)' }}>{phase.goal}</p>
+                    )}
+                    {summary && (
+                      <p className="text-[11px] leading-relaxed pt-1.5 flex items-start gap-1.5"
+                        style={{ color: 'var(--text-muted)', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                        <Sparkles size={10} style={{ color: '#a78bfa', flexShrink: 0, marginTop: 2 }} />
+                        <span>{summary}</span>
+                      </p>
+                    )}
                   </div>
-
-                  {/* Agent Guidance */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <FieldLabel>Agent Guidance</FieldLabel>
-                      <AIAssistWidget fieldKey="phaseNotes" currentValue={phase.notes || ''}
-                        onAccept={val => updatePhase(phase.id, { notes: val })} />
-                    </div>
-                    <textarea className="input-base w-full text-xs resize-none" rows={2}
-                      placeholder="Describe the purpose, tone, and intent of this phase — this becomes the agent's primary instruction for content creation."
-                      value={phase.notes || ''} onChange={e => updatePhase(phase.id, { notes: e.target.value })} />
+                  <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setEditingPhaseId(phase.id) }}
+                      className="p-1.5 rounded-md opacity-60 hover:opacity-100 transition-opacity"
+                      title="Edit phase"
+                      style={{ color: 'var(--text-muted)' }}>
+                      <Pencil size={12} />
+                    </button>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); removePhase(phase.id) }}
+                      className="p-1.5 rounded-md opacity-35 hover:opacity-80 transition-opacity"
+                      title="Remove phase">
+                      <Trash2 size={12} style={{ color: '#f87171' }} />
+                    </button>
                   </div>
-
-                  {/* Advanced settings — collapsed by default */}
-                  <Accordion label="Advanced settings">
-                    <ActionSlotsBlock
-                      slots={phase.actionSlots}
-                      onAdd={() => addActionSlot(phase.id)}
-                      onRemove={(slotId) => removeActionSlot(phase.id, slotId)}
-                      onUpdate={(slotId, patch) => updateActionSlot(phase.id, slotId, patch)}
-                    />
-                  </Accordion>
                 </div>
-                )}
               </div>
             )
           })}
@@ -3626,6 +3795,19 @@ function PhasesStep({ data, onChange }) {
           usedSignalIds={usedSignalIds}
           onClose={() => setShowSignalModal(false)}
           onSelect={addSignalPhaseFromType}
+        />
+      )}
+
+      {editingPhase && (
+        <PhaseSlideOut
+          phase={editingPhase}
+          onUpdate={(patch) => updatePhase(editingPhase.id, patch)}
+          onClose={closePhaseSlideOut}
+          onSave={savePhaseSlideOut}
+          onAddSlot={() => addActionSlot(editingPhase.id)}
+          onRemoveSlot={(slotId) => removeActionSlot(editingPhase.id, slotId)}
+          onUpdateSlot={(slotId, patch) => updateActionSlot(editingPhase.id, slotId, patch)}
+          onToggleChannel={(chId) => toggleChannel(editingPhase.id, chId)}
         />
       )}
 
