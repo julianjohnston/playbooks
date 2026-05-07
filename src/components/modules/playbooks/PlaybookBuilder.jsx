@@ -982,22 +982,6 @@ function KnowledgeStep({ data, onChange }) {
   return (
     <div className="space-y-6">
 
-      {/* Intro callout */}
-      <div className="flex items-start gap-3 p-4 rounded-xl"
-        style={{ background: 'rgba(124,92,252,0.07)', border: '1px solid rgba(124,92,252,0.2)' }}>
-        <div className="p-2 rounded-lg shrink-0" style={{ background: 'rgba(124,92,252,0.15)' }}>
-          <BookOpen size={14} style={{ color: '#a78bfa' }} />
-        </div>
-        <div>
-          <p className="text-xs font-semibold mb-1" style={{ color: '#a78bfa' }}>What are Knowledge Packs?</p>
-          <p className="text-[11px] leading-relaxed" style={{ color: 'rgba(167,139,250,0.75)' }}>
-            Knowledge packs are curated collections of verified facts governed by your Truth Planes.
-            Selecting a pack grants this playbook's AI actions the ability to reference, reason from, and cite those facts
-            during live execution — ensuring every response is grounded in your organisation's governed data.
-          </p>
-        </div>
-      </div>
-
       {/* Selected summary bar */}
       {selected.length > 0 && (
         <div className="flex items-center gap-2 flex-wrap p-3 rounded-xl"
@@ -1235,24 +1219,6 @@ function MomentStep({ data, onChange }) {
 
   return (
     <div className="space-y-6">
-
-      {/* Eligibility callout */}
-      <div className="flex gap-3 p-4 rounded-xl"
-        style={{ background: 'rgba(124,92,252,0.08)', border: '1px solid rgba(124,92,252,0.25)' }}>
-        <div className="shrink-0 mt-0.5">
-          <div className="w-5 h-5 rounded-full flex items-center justify-center"
-            style={{ background: 'rgba(124,92,252,0.25)' }}>
-            <span style={{ color: '#a78bfa', fontSize: 11, fontWeight: 700 }}>i</span>
-          </div>
-        </div>
-        <div>
-          <p className="text-xs font-bold mb-1" style={{ color: '#a78bfa' }}>Eligibility, Not Auto-Launch</p>
-          <p className="text-[11px] leading-relaxed" style={{ color: '#c4b5fd' }}>
-            Meeting this moment makes the playbook <span style={{ color: '#a78bfa', fontWeight: 600 }}>available for NBA evaluation</span>—it
-            doesn't automatically launch execution. NBA will consider this playbook alongside others and select the best fit.
-          </p>
-        </div>
-      </div>
 
       {/* Primary Event / Moment */}
       <div>
@@ -1906,20 +1872,6 @@ function GatesStep({ data, onChange }) {
   return (
     <div className="space-y-4">
 
-      {/* Orange callout — What NBA Cannot Override */}
-      <div className="flex gap-3 p-4 rounded-xl"
-        style={{ background: 'rgba(234,88,12,0.08)', border: '1px solid rgba(234,88,12,0.28)' }}>
-        <Shield size={15} style={{ color: '#fb923c', flexShrink: 0, marginTop: 1 }} />
-        <div>
-          <p className="text-xs font-bold mb-1" style={{ color: '#fb923c' }}>What NBA Cannot Override</p>
-          <p className="text-[11px] leading-relaxed" style={{ color: '#fdba74' }}>
-            Hard Gates are <span style={{ fontWeight: 600 }}>deterministic constraints</span> that NBA must respect. If a gate
-            fails, the playbook will follow the configured outcome—no exceptions. Use these to enforce compliance, legal
-            requirements, and business rules.
-          </p>
-        </div>
-      </div>
-
       {/* Blue info callout */}
       <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl"
         style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)' }}>
@@ -2192,49 +2144,6 @@ function ObjectiveStep({ data, onChange }) {
 
   return (
     <div className="space-y-5">
-
-      {/* ── Plan Lifecycle diagram ── */}
-      <div className="rounded-xl p-4" style={{ background: 'rgba(30,27,75,0.5)', border: '1px solid rgba(99,102,241,0.2)' }}>
-        <div className="flex items-center gap-2 mb-4">
-          <Activity size={13} style={{ color: '#818cf8' }} />
-          <p className="text-xs font-bold" style={{ color: '#818cf8' }}>Plan Lifecycle</p>
-        </div>
-        <div className="flex items-center gap-3">
-          {/* Eligible box */}
-          <div className="flex-1 rounded-lg px-3 py-2.5" style={{ background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.25)' }}>
-            <div className="flex items-center gap-1.5 mb-0.5">
-              <PlayCircle size={12} style={{ color: '#60a5fa' }} />
-              <p className="text-xs font-bold" style={{ color: '#60a5fa' }}>Eligible</p>
-            </div>
-            <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.4)' }}>Moment triggers, gates pass</p>
-          </div>
-          <ChevronRight size={13} style={{ color: 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
-          {/* Active Plan box */}
-          <div className="flex-1 rounded-lg px-3 py-2.5" style={{ background: 'rgba(124,92,252,0.12)', border: '1px solid rgba(124,92,252,0.25)' }}>
-            <div className="flex items-center gap-1.5 mb-0.5">
-              <Activity size={12} style={{ color: '#a78bfa' }} />
-              <p className="text-xs font-bold" style={{ color: '#a78bfa' }}>Active Plan</p>
-            </div>
-            <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.4)' }}>Actions executing</p>
-          </div>
-          <ChevronRight size={13} style={{ color: 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
-          {/* Outcomes */}
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)' }}>
-              <CheckCircle size={11} style={{ color: '#4ade80' }} />
-              <p className="text-[11px] font-semibold" style={{ color: '#4ade80' }}>Success</p>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(234,88,12,0.08)', border: '1px solid rgba(234,88,12,0.35)' }}>
-              <XCircle size={11} style={{ color: '#fb923c' }} />
-              <p className="text-[11px] font-semibold" style={{ color: '#fb923c' }}>Exit</p>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)' }}>
-              <Clock size={11} style={{ color: 'rgba(255,255,255,0.35)' }} />
-              <p className="text-[11px] font-semibold" style={{ color: 'rgba(255,255,255,0.35)' }}>Expired</p>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* ── Goal Type ── */}
       <div className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -3662,18 +3571,6 @@ function TrustStep({ data, onChange }) {
 
   return (
     <div className="space-y-6">
-
-      {/* ── Top callout ───────────────────────────────────────────────────────── */}
-      <div className="flex gap-3 px-4 py-3.5 rounded-xl"
-        style={{ background: 'rgba(20,184,166,0.07)', border: '1px solid rgba(20,184,166,0.25)' }}>
-        <Activity size={15} style={{ color: '#2dd4bf', flexShrink: 0, marginTop: 1 }} />
-        <div>
-          <p className="text-xs font-bold mb-1" style={{ color: '#2dd4bf' }}>NBA Proposes; Orchestration Enforces</p>
-          <p className="text-[11px] leading-relaxed" style={{ color: 'rgba(45,212,191,0.72)' }}>
-            NBA may propose actions based on context and customer signals. Your trust controls determine whether those proposals execute automatically, require human review, or need explicit approval before sending.
-          </p>
-        </div>
-      </div>
 
       {/* ── Default Trust Policy ───────────────────────────────────────────────── */}
       <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.09)' }}>
