@@ -177,6 +177,15 @@ const SIDEBAR_FIELDS = {
     { key: 'strategyNotes',       label: 'Strategy Notes',  required: false },
   ],
   phases:    [
+    { key: 'personalizationFields', label: 'Messaging personalization', required: false, isArray: true,
+      format: (val) => {
+        const arr = Array.isArray(val) ? val : []
+        if (arr.length === 0) return ''
+        const L3 = ['regional_lang','family_info','activity_history','relationship']
+        const L2 = ['hobbies','proximity','upcoming_service','current_vehicle','current_products']
+        const level = arr.some(f => L3.includes(f)) ? 3 : arr.some(f => L2.includes(f)) ? 2 : 1
+        return `Level ${level} · ${arr.length} field${arr.length === 1 ? '' : 's'}`
+      } },
     { key: 'phases',       label: 'Sequential phases', required: true,  isArray: true },
     { key: 'signalPhases', label: 'Signal phases',     required: false, isArray: true },
   ],
@@ -523,11 +532,13 @@ function StepSidebar({ stepId, data }) {
                 </p>
                 {complete && (
                   <p className="text-[10px] truncate mt-0.5" style={{ color: '#4ade80', maxWidth: 160 }}>
-                    {Array.isArray(val)
-                      ? val.length > 0
-                        ? (typeof val[0] === 'object' ? `${val.length} phase${val.length > 1 ? 's' : ''}` : val.join(', '))
-                        : '—'
-                      : String(val).length > 24 ? String(val).slice(0, 24) + '…' : val}
+                    {f.format
+                      ? f.format(val)
+                      : Array.isArray(val)
+                        ? val.length > 0
+                          ? (typeof val[0] === 'object' ? `${val.length} phase${val.length > 1 ? 's' : ''}` : val.join(', '))
+                          : '—'
+                        : String(val).length > 24 ? String(val).slice(0, 24) + '…' : val}
                   </p>
                 )}
               </div>
