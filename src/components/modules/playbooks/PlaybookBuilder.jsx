@@ -3364,6 +3364,14 @@ function PhasesStep({ data, onChange }) {
           set('personalizationFields', next)
         }
 
+        const setLevel = (n) => {
+          let next = []
+          for (let i = 0; i < n; i++) {
+            next = next.concat(PERSONALIZATION_GROUPS[i].fields.map(f => f.id))
+          }
+          set('personalizationFields', next)
+        }
+
         const LEVEL_META = [
           { n: 1, color: '#4ade80', bg: 'rgba(74,222,128,0.12)', label: 'Basic',    desc: 'Name, vehicle interest & assigned rep'                  },
           { n: 2, color: '#60a5fa', bg: 'rgba(96,165,250,0.12)', label: 'Enhanced', desc: '+ Hobbies, services, current vehicle & product history' },
@@ -3401,7 +3409,9 @@ function PhasesStep({ data, onChange }) {
                     const active = pLevel >= lm.n
                     const current = pLevel === lm.n
                     return (
-                      <div key={lm.n} className="flex-1 rounded-xl px-3 py-3 transition-all"
+                      <button key={lm.n} type="button" onClick={() => setLevel(lm.n)}
+                        title={`Select all Level ${lm.n} fields`}
+                        className="flex-1 rounded-xl px-3 py-3 transition-all text-left hover:brightness-110 cursor-pointer"
                         style={{
                           background: active ? lm.bg : 'rgba(255,255,255,0.02)',
                           border: `1.5px solid ${active ? lm.color + '55' : 'rgba(255,255,255,0.07)'}`,
@@ -3424,7 +3434,7 @@ function PhasesStep({ data, onChange }) {
                         <p className="text-[10px] leading-snug" style={{ color: active ? lm.color + 'bb' : 'var(--text-muted)' }}>
                           {lm.desc}
                         </p>
-                      </div>
+                      </button>
                     )
                   })}
                 </div>
