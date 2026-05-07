@@ -181,8 +181,8 @@ const SIDEBAR_FIELDS = {
       format: (val) => {
         const arr = Array.isArray(val) ? val : []
         if (arr.length === 0) return ''
-        const L3 = ['regional_lang','family_info','activity_history','relationship']
-        const L2 = ['hobbies','proximity','upcoming_service','current_vehicle','current_products']
+        const L3 = ['regional_lang','family_info','hobbies','relationship']
+        const L2 = ['activity_history','proximity','upcoming_service','current_vehicle','current_products']
         const level = arr.some(f => L3.includes(f)) ? 3 : arr.some(f => L2.includes(f)) ? 2 : 1
         return `Level ${level} · ${arr.length} field${arr.length === 1 ? '' : 's'}`
       } },
@@ -3086,7 +3086,7 @@ function PhasesStep({ data, onChange }) {
             fields: [
               { id: 'name',             label: 'Customer Name',       example: 'e.g. "Maria Gomez"'             },
               { id: 'vehicle_interest', label: 'Vehicle Interest',    example: 'e.g. "2023 Ford Explorer XLT"'  },
-              { id: 'assigned_bdc',     label: 'Assigned BDC Agent',  example: 'e.g. "alex.bdc"'                },
+              { id: 'assigned_bdc',     label: 'Assigned Rep',        example: 'e.g. "alex.bdc"'                },
               { id: 'source',           label: 'Lead Source',         example: 'e.g. "OEM Website"'             },
             ],
           },
@@ -3094,7 +3094,7 @@ function PhasesStep({ data, onChange }) {
             id: 'enhanced', level: 2, color: '#60a5fa', label: 'Enhanced Profile',
             desc: 'Enriched CRM data — available after initial engagement',
             fields: [
-              { id: 'hobbies',          label: 'Hobbies & Interests',  example: 'From CRM enrichment'            },
+              { id: 'activity_history', label: 'Dealership Activity', example: 'Past visits, purchases, behavior'},
               { id: 'proximity',        label: 'Proximity & Location', example: 'Distance & local context'       },
               { id: 'upcoming_service', label: 'Upcoming Services',    example: 'Scheduled maintenance alerts'   },
               { id: 'current_vehicle',  label: 'Current Vehicle',      example: 'Trade-in / owned vehicle info'  },
@@ -3107,7 +3107,7 @@ function PhasesStep({ data, onChange }) {
             fields: [
               { id: 'regional_lang',    label: 'Regional Language',   example: 'Local tone & expressions'        },
               { id: 'family_info',      label: 'Family & Household',  example: 'Spouse, kids, lifestyle notes'   },
-              { id: 'activity_history', label: 'Dealership Activity', example: 'Past visits, purchases, behavior'},
+              { id: 'hobbies',          label: 'Hobbies & Interests', example: 'From CRM enrichment'             },
               { id: 'relationship',     label: 'Relationship Notes',  example: 'Rep–customer history & context'  },
             ],
           },
@@ -3820,8 +3820,8 @@ function TrustStep({ data, onChange }) {
               </div>
               {(() => {
                 const pFields = data.personalizationFields || []
-                const L3_IDS = ['regional_lang','family_info','activity_history','relationship']
-                const L2_IDS = ['hobbies','proximity','upcoming_service','current_vehicle','current_products']
+                const L3_IDS = ['regional_lang','family_info','hobbies','relationship']
+                const L2_IDS = ['activity_history','proximity','upcoming_service','current_vehicle','current_products']
                 const pLevel = pFields.some(f => L3_IDS.includes(f)) ? 3
                              : pFields.some(f => L2_IDS.includes(f)) ? 2 : 1
                 const pLevelColor = pLevel === 3 ? '#f472b6' : pLevel === 2 ? '#60a5fa' : '#4ade80'
