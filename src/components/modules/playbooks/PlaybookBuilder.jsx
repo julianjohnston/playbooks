@@ -3166,23 +3166,15 @@ function PhaseSlideOut({ phase, onUpdate, onClose, onSave, onAddSlot, onRemoveSl
             </div>
           </button>
 
-          {/* Agent Guidance */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <FieldLabel>Agent Guidance</FieldLabel>
-              <AIAssistWidget fieldKey="phaseNotes" currentValue={phase.notes || ''}
-                onAccept={val => onUpdate({ notes: val })} />
-            </div>
-            <textarea className="input-base w-full text-xs resize-none" rows={3}
-              placeholder="Describe the purpose, tone, and intent of this phase — this becomes the agent's primary instruction for content creation."
-              value={phase.notes || ''} onChange={e => onUpdate({ notes: e.target.value })} />
-          </div>
-
           {/* Additional agent instructions */}
           <div>
-            <FieldLabel>Additional Agent Instructions</FieldLabel>
+            <div className="flex items-center justify-between mb-1.5">
+              <FieldLabel>Additional Agent Instructions</FieldLabel>
+              <AIAssistWidget fieldKey="phaseNotes" currentValue={phase.additionalInstructions || ''}
+                onAccept={val => onUpdate({ additionalInstructions: val })} />
+            </div>
             <textarea className="input-base w-full text-xs resize-none" rows={3}
-              placeholder="Add any extra constraints, do/don't rules, or context the agent should layer on top of the guidance above."
+              placeholder="Add any extra constraints, do/don't rules, or context the agent should layer on top of the phase goal."
               value={phase.additionalInstructions || ''} onChange={e => onUpdate({ additionalInstructions: e.target.value })} />
           </div>
 
