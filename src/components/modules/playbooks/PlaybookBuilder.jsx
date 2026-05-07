@@ -64,7 +64,7 @@ const STEPS = [
   { id: 'gates',     label: 'Hard Gates', icon: Shield    },
   { id: 'objective', label: 'Objective',  icon: Target    },
   { id: 'knowledge', label: 'Knowledge',  icon: BookOpen  },
-  { id: 'phases',    label: 'Phases',     icon: Layers    },
+  { id: 'phases',    label: 'Outreach',   icon: Layers    },
   { id: 'trust',     label: 'Trust',      icon: Zap       },
   { id: 'review',    label: 'Review',     icon: Eye       },
 ]
@@ -76,7 +76,7 @@ const STEP_META = {
   moment:    { title: 'Moment',           desc: 'Choose the primary event or customer condition that makes this playbook a candidate strategy',                           iconBg: 'linear-gradient(135deg,#a78bfa,#ec4899)' },
   gates:     { title: 'Hard Gates',       desc: 'Set non-negotiable eligibility checks — if any fail, the playbook will not execute',                                    iconBg: 'linear-gradient(135deg,#16a34a,#2dd4bf)' },
   objective: { title: 'Objective & Success', desc: 'Define the business goal and the KPI the NBA engine should optimize toward',                                         iconBg: 'linear-gradient(135deg,#f59e0b,#ef4444)' },
-  phases:    { title: 'Phases & Actions', desc: 'Structure the execution flow — each phase runs in sequence and can contain multiple actions',                            iconBg: 'linear-gradient(135deg,#2563eb,#0891b2)' },
+  phases:    { title: 'Outreach',          desc: 'Configure how this playbook reaches out — sequential outreach, signal-driven actions, and the personalization defaults that apply across both', iconBg: 'linear-gradient(135deg,#2563eb,#0891b2)' },
   trust:     { title: 'Trust Controls',   desc: 'Set how much autonomy the NBA engine has and when human approval is required',                                          iconBg: 'linear-gradient(135deg,#7c5cfc,#2563eb)' },
   review:    { title: 'Review',           desc: 'Confirm all settings before saving. You can return to any step to make changes.',                                        iconBg: 'linear-gradient(135deg,#64748b,#475569)' },
 }
@@ -2974,6 +2974,7 @@ function TemplateSelector({ templates, value, onChange }) {
 
 // ── Step: Phases ──────────────────────────────────────────────────────────────
 function PhasesStep({ data, onChange }) {
+  const set = (key, val) => onChange({ ...data, [key]: val })
   const phases = data.phases || []
   const setPhases = (p) => onChange({ ...data, phases: p })
   const updatePhase = (id, patch) => setPhases(phases.map(p => p.id === id ? { ...p, ...patch } : p))
@@ -3064,6 +3065,192 @@ function PhasesStep({ data, onChange }) {
 
   return (
     <div className="space-y-5">
+
+      {/* ── Messaging Personalization Level — global default for the playbook ─── */}
+      {(() => {
+        const PERSONALIZATION_GROUPS = [
+          {
+            id: 'basic', level: 1, color: '#4ade80', label: 'Basic Lead Data',
+            desc: 'Core intake fields — always available at first contact',
+            fields: [
+              { id: 'name',             label: 'Customer Name',       example: 'e.g. "Maria Gomez"'             },
+              { id: 'vehicle_interest', label: 'Vehicle Interest',    example: 'e.g. "2023 Ford Explorer XLT"'  },
+              { id: 'assigned_bdc',     label: 'Assigned BDC Agent',  example: 'e.g. "alex.bdc"'                },
+              { id: 'source',           label: 'Lead Source',         example: 'e.g. "OEM Website"'             },
+            ],
+          },
+          {
+            id: 'enhanced', level: 2, color: '#60a5fa', label: 'Enhanced Profile',
+            desc: 'Enriched CRM data — available after initial engagement',
+            fields: [
+              { id: 'hobbies',          label: 'Hobbies & Interests',  example: 'From CRM enrichment'            },
+              { id: 'proximity',        label: 'Proximity & Location', example: 'Distance & local context'       },
+              { id: 'upcoming_service', label: 'Upcoming Services',    example: 'Scheduled maintenance alerts'   },
+              { id: 'current_vehicle',  label: 'Current Vehicle',      example: 'Trade-in / owned vehicle info'  },
+              { id: 'current_products', label: 'Current Products',     example: 'Active deals or subscriptions'  },
+            ],
+          },
+          {
+            id: 'deep', level: 3, color: '#f472b6', label: 'Deep Relationship',
+            desc: 'High-touch data — use carefully, requires explicit consent',
+            fields: [
+              { id: 'regional_lang',    label: 'Regional Language',   example: 'Local tone & expressions'        },
+              { id: 'family_info',      label: 'Family & Household',  example: 'Spouse, kids, lifestyle notes'   },
+              { id: 'activity_history', label: 'Dealership Activity', example: 'Past visits, purchases, behavior'},
+              { id: 'relationship',     label: 'Relationship Notes',  example: 'Rep–customer history & context'  },
+            ],
+          },
+        ]
+
+        const pFields = data.personalizationFields || []
+        const L3_IDS  = PERSONALIZATION_GROUPS[2].fields.map(f => f.id)
+        const L2_IDS  = PERSONALIZATION_GROUPS[1].fields.map(f => f.id)
+        const pLevel  = pFields.some(f => L3_IDS.includes(f)) ? 3
+                      : pFields.some(f => L2_IDS.includes(f)) ? 2 : 1
+
+        const toggleField = (id) => {
+          const next = pFields.includes(id) ? pFields.filter(f => f !== id) : [...pFields, id]
+          set('personalizationFields', next)
+        }
+
+        const LEVEL_META = [
+          { n: 1, color: '#4ade80', bg: 'rgba(74,222,128,0.12)', label: 'Basic',    desc: 'Name, vehicle interest & assigned rep'                  },
+          { n: 2, color: '#60a5fa', bg: 'rgba(96,165,250,0.12)', label: 'Enhanced', desc: '+ Hobbies, services, current vehicle & product history' },
+          { n: 3, color: '#f472b6', bg: 'rgba(244,114,182,0.12)',label: 'Full',      desc: '+ Regional tone, family, dealership activity & notes'   },
+        ]
+
+        return (
+          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.09)' }}>
+
+            {/* Header */}
+            <div className="flex items-center gap-2 px-5 py-3.5"
+              style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <User size={13} style={{ color: '#a78bfa' }} />
+              <span className="text-xs font-bold" style={{ color: '#a78bfa' }}>Messaging Personalization Level</span>
+              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full ml-1"
+                style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}>
+                NBA Guardrail
+              </span>
+            </div>
+
+            <div className="px-5 py-4 space-y-5">
+
+              {/* Callout */}
+              <p className="text-[11px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                Select which lead data fields the NBA AI network is allowed to use when composing personalized messages. The active level is automatically derived from your selection and acts as a trust guardrail.
+              </p>
+
+              {/* Level bar */}
+              <div>
+                <p className="text-[11px] font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>
+                  Active Level
+                </p>
+                <div className="flex gap-2">
+                  {LEVEL_META.map(lm => {
+                    const active = pLevel >= lm.n
+                    const current = pLevel === lm.n
+                    return (
+                      <div key={lm.n} className="flex-1 rounded-xl px-3 py-3 transition-all"
+                        style={{
+                          background: active ? lm.bg : 'rgba(255,255,255,0.02)',
+                          border: `1.5px solid ${active ? lm.color + '55' : 'rgba(255,255,255,0.07)'}`,
+                        }}>
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <div className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0"
+                            style={{ background: active ? lm.color + '25' : 'rgba(255,255,255,0.04)', color: active ? lm.color : 'var(--text-muted)', border: `1px solid ${active ? lm.color + '40' : 'rgba(255,255,255,0.08)'}` }}>
+                            {lm.n}
+                          </div>
+                          <span className="text-[11px] font-bold" style={{ color: active ? lm.color : 'var(--text-muted)' }}>
+                            {lm.label}
+                          </span>
+                          {current && (
+                            <span className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+                              style={{ background: lm.color + '20', color: lm.color }}>
+                              Active
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] leading-snug" style={{ color: active ? lm.color + 'bb' : 'var(--text-muted)' }}>
+                          {lm.desc}
+                        </p>
+                      </div>
+                    )
+                  })}
+                </div>
+                {/* Progress fill bar — width = % of fields selected, color = level reached */}
+                {(() => {
+                  const totalFields = PERSONALIZATION_GROUPS.reduce((s, g) => s + g.fields.length, 0)
+                  const fillPct = totalFields > 0 ? Math.round((pFields.length / totalFields) * 100) : 0
+                  return (
+                    <div className="mt-3">
+                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                        <div className="h-full rounded-full transition-all duration-300"
+                          style={{
+                            width: `${fillPct}%`,
+                            background: pLevel === 3 ? 'linear-gradient(90deg,#4ade80,#60a5fa,#f472b6)'
+                                      : pLevel === 2 ? 'linear-gradient(90deg,#4ade80,#60a5fa)'
+                                      : '#4ade80',
+                          }} />
+                      </div>
+                      <div className="flex justify-between mt-1.5">
+                        <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{pFields.length} of {totalFields} fields selected</span>
+                        <span className="text-[10px] font-semibold" style={{ color: pLevel === 3 ? '#f472b6' : pLevel === 2 ? '#60a5fa' : '#4ade80' }}>{fillPct}%</span>
+                      </div>
+                    </div>
+                  )
+                })()}
+              </div>
+
+              {/* Field groups */}
+              <div className="space-y-4">
+                {PERSONALIZATION_GROUPS.map(group => (
+                  <div key={group.id}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: group.color }} />
+                      <p className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                        Level {group.level} — {group.label}
+                      </p>
+                      <span className="text-[10px] ml-1" style={{ color: 'var(--text-muted)' }}>{group.desc}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {group.fields.map(field => {
+                        const on = pFields.includes(field.id)
+                        return (
+                          <button key={field.id} type="button"
+                            onClick={() => toggleField(field.id)}
+                            className="flex flex-col gap-0.5 px-3 py-2 rounded-lg text-left transition-all"
+                            style={{
+                              background: on ? group.color + '12' : 'rgba(255,255,255,0.03)',
+                              border: `1px solid ${on ? group.color + '45' : 'rgba(255,255,255,0.08)'}`,
+                            }}>
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-3 h-3 rounded flex items-center justify-center shrink-0"
+                                style={{
+                                  background: on ? group.color : 'rgba(255,255,255,0.07)',
+                                  border: `1.5px solid ${on ? group.color : 'rgba(255,255,255,0.2)'}`,
+                                }}>
+                                {on && <Check size={7} color="#000" />}
+                              </div>
+                              <span className="text-[11px] font-medium whitespace-nowrap"
+                                style={{ color: on ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                                {field.label}
+                              </span>
+                            </div>
+                            <p className="text-[10px] pl-[18px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
+                              {field.example}
+                            </p>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Template picker ── */}
       {showTemplates ? (
@@ -4102,192 +4289,6 @@ function TrustStep({ data, onChange }) {
         </div>
       </div>
 
-      {/* ── Messaging Personalization Level ────────────────────────────────────── */}
-      {(() => {
-        const PERSONALIZATION_GROUPS = [
-          {
-            id: 'basic', level: 1, color: '#4ade80', label: 'Basic Lead Data',
-            desc: 'Core intake fields — always available at first contact',
-            fields: [
-              { id: 'name',             label: 'Customer Name',       example: 'e.g. "Maria Gomez"'             },
-              { id: 'vehicle_interest', label: 'Vehicle Interest',    example: 'e.g. "2023 Ford Explorer XLT"'  },
-              { id: 'assigned_bdc',     label: 'Assigned BDC Agent',  example: 'e.g. "alex.bdc"'                },
-              { id: 'source',           label: 'Lead Source',         example: 'e.g. "OEM Website"'             },
-            ],
-          },
-          {
-            id: 'enhanced', level: 2, color: '#60a5fa', label: 'Enhanced Profile',
-            desc: 'Enriched CRM data — available after initial engagement',
-            fields: [
-              { id: 'hobbies',          label: 'Hobbies & Interests',  example: 'From CRM enrichment'            },
-              { id: 'proximity',        label: 'Proximity & Location', example: 'Distance & local context'       },
-              { id: 'upcoming_service', label: 'Upcoming Services',    example: 'Scheduled maintenance alerts'   },
-              { id: 'current_vehicle',  label: 'Current Vehicle',      example: 'Trade-in / owned vehicle info'  },
-              { id: 'current_products', label: 'Current Products',     example: 'Active deals or subscriptions'  },
-            ],
-          },
-          {
-            id: 'deep', level: 3, color: '#f472b6', label: 'Deep Relationship',
-            desc: 'High-touch data — use carefully, requires explicit consent',
-            fields: [
-              { id: 'regional_lang',    label: 'Regional Language',   example: 'Local tone & expressions'        },
-              { id: 'family_info',      label: 'Family & Household',  example: 'Spouse, kids, lifestyle notes'   },
-              { id: 'activity_history', label: 'Dealership Activity', example: 'Past visits, purchases, behavior'},
-              { id: 'relationship',     label: 'Relationship Notes',  example: 'Rep–customer history & context'  },
-            ],
-          },
-        ]
-
-        const pFields = data.personalizationFields || []
-        const L3_IDS  = PERSONALIZATION_GROUPS[2].fields.map(f => f.id)
-        const L2_IDS  = PERSONALIZATION_GROUPS[1].fields.map(f => f.id)
-        const pLevel  = pFields.some(f => L3_IDS.includes(f)) ? 3
-                      : pFields.some(f => L2_IDS.includes(f)) ? 2 : 1
-
-        const toggleField = (id) => {
-          const next = pFields.includes(id) ? pFields.filter(f => f !== id) : [...pFields, id]
-          set('personalizationFields', next)
-        }
-
-        const LEVEL_META = [
-          { n: 1, color: '#4ade80', bg: 'rgba(74,222,128,0.12)', label: 'Basic',    desc: 'Name, vehicle interest & assigned rep'                  },
-          { n: 2, color: '#60a5fa', bg: 'rgba(96,165,250,0.12)', label: 'Enhanced', desc: '+ Hobbies, services, current vehicle & product history' },
-          { n: 3, color: '#f472b6', bg: 'rgba(244,114,182,0.12)',label: 'Full',      desc: '+ Regional tone, family, dealership activity & notes'   },
-        ]
-
-        return (
-          <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.09)' }}>
-
-            {/* Header */}
-            <div className="flex items-center gap-2 px-5 py-3.5"
-              style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <User size={13} style={{ color: '#a78bfa' }} />
-              <span className="text-xs font-bold" style={{ color: '#a78bfa' }}>Messaging Personalization Level</span>
-              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full ml-1"
-                style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}>
-                NBA Guardrail
-              </span>
-            </div>
-
-            <div className="px-5 py-4 space-y-5">
-
-              {/* Callout */}
-              <p className="text-[11px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-                Select which lead data fields the NBA AI network is allowed to use when composing personalized messages. The active level is automatically derived from your selection and acts as a trust guardrail.
-              </p>
-
-              {/* Level bar */}
-              <div>
-                <p className="text-[11px] font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>
-                  Active Level
-                </p>
-                <div className="flex gap-2">
-                  {LEVEL_META.map(lm => {
-                    const active = pLevel >= lm.n
-                    const current = pLevel === lm.n
-                    return (
-                      <div key={lm.n} className="flex-1 rounded-xl px-3 py-3 transition-all"
-                        style={{
-                          background: active ? lm.bg : 'rgba(255,255,255,0.02)',
-                          border: `1.5px solid ${active ? lm.color + '55' : 'rgba(255,255,255,0.07)'}`,
-                        }}>
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <div className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0"
-                            style={{ background: active ? lm.color + '25' : 'rgba(255,255,255,0.04)', color: active ? lm.color : 'var(--text-muted)', border: `1px solid ${active ? lm.color + '40' : 'rgba(255,255,255,0.08)'}` }}>
-                            {lm.n}
-                          </div>
-                          <span className="text-[11px] font-bold" style={{ color: active ? lm.color : 'var(--text-muted)' }}>
-                            {lm.label}
-                          </span>
-                          {current && (
-                            <span className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
-                              style={{ background: lm.color + '20', color: lm.color }}>
-                              Active
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[10px] leading-snug" style={{ color: active ? lm.color + 'bb' : 'var(--text-muted)' }}>
-                          {lm.desc}
-                        </p>
-                      </div>
-                    )
-                  })}
-                </div>
-                {/* Progress fill bar — width = % of fields selected, color = level reached */}
-                {(() => {
-                  const totalFields = PERSONALIZATION_GROUPS.reduce((s, g) => s + g.fields.length, 0)
-                  const fillPct = totalFields > 0 ? Math.round((pFields.length / totalFields) * 100) : 0
-                  return (
-                    <div className="mt-3">
-                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                        <div className="h-full rounded-full transition-all duration-300"
-                          style={{
-                            width: `${fillPct}%`,
-                            background: pLevel === 3 ? 'linear-gradient(90deg,#4ade80,#60a5fa,#f472b6)'
-                                      : pLevel === 2 ? 'linear-gradient(90deg,#4ade80,#60a5fa)'
-                                      : '#4ade80',
-                          }} />
-                      </div>
-                      <div className="flex justify-between mt-1.5">
-                        <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{pFields.length} of {totalFields} fields selected</span>
-                        <span className="text-[10px] font-semibold" style={{ color: pLevel === 3 ? '#f472b6' : pLevel === 2 ? '#60a5fa' : '#4ade80' }}>{fillPct}%</span>
-                      </div>
-                    </div>
-                  )
-                })()}
-              </div>
-
-              {/* Field groups */}
-              <div className="space-y-4">
-                {PERSONALIZATION_GROUPS.map(group => (
-                  <div key={group.id}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: group.color }} />
-                      <p className="text-[11px] font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                        Level {group.level} — {group.label}
-                      </p>
-                      <span className="text-[10px] ml-1" style={{ color: 'var(--text-muted)' }}>{group.desc}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {group.fields.map(field => {
-                        const on = pFields.includes(field.id)
-                        return (
-                          <button key={field.id} type="button"
-                            onClick={() => toggleField(field.id)}
-                            className="flex flex-col gap-0.5 px-3 py-2 rounded-lg text-left transition-all"
-                            style={{
-                              background: on ? group.color + '12' : 'rgba(255,255,255,0.03)',
-                              border: `1px solid ${on ? group.color + '45' : 'rgba(255,255,255,0.08)'}`,
-                            }}>
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-3 h-3 rounded flex items-center justify-center shrink-0"
-                                style={{
-                                  background: on ? group.color : 'rgba(255,255,255,0.07)',
-                                  border: `1.5px solid ${on ? group.color : 'rgba(255,255,255,0.2)'}`,
-                                }}>
-                                {on && <Check size={7} color="#000" />}
-                              </div>
-                              <span className="text-[11px] font-medium whitespace-nowrap"
-                                style={{ color: on ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-                                {field.label}
-                              </span>
-                            </div>
-                            <p className="text-[10px] pl-[18px] whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
-                              {field.example}
-                            </p>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-            </div>
-          </div>
-        )
-      })()}
-
     </div>
   )
 }
@@ -4418,7 +4419,7 @@ function ReviewStep({ data, onChange, onJump }) {
     {
       id: 'phases', stepIdx: 5,
       icon: Layers, iconBg: 'linear-gradient(135deg,#2563eb,#0891b2)',
-      label: 'Phases',
+      label: 'Outreach',
       pairs: data.phases.length > 0
         ? data.phases.map((p, i) => [
             { label: `Phase ${i + 1}`, val: p.name },
