@@ -2167,11 +2167,10 @@ function ObjectiveStep({ data, onChange }) {
           <option value="">Select goal type...</option>
           {GOAL_TYPES.map(g => <option key={g} value={g}>{g}</option>)}
         </select>
-      </div>
 
-      {/* ── Primary Success Events — multi-select, revealed when goal type selected ── */}
-      {data.goalType && (
-        <div>
+        {/* ── Primary Success Events — multi-select, revealed when goal type selected ── */}
+        {data.goalType && (
+        <div className="mt-4 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
           <div className="flex items-center gap-1 mb-1.5">
             <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Primary Success Events</p>
             <span style={{ color: '#ef4444', fontSize: 12, lineHeight: 1 }}>*</span>
@@ -2235,7 +2234,8 @@ function ObjectiveStep({ data, onChange }) {
             • Secondary signals help NBA adapt the plan over time
           </p>
         </div>
-      )}
+        )}
+      </div>
 
       {/* ── Exit Conditions — each with its own inline outcome ── */}
       <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(234,88,12,0.25)' }}>
