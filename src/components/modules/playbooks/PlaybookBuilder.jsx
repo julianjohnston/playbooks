@@ -2649,9 +2649,17 @@ function getPhaseType(id) { return PHASE_TYPES.find(t => t.id === id) || PHASE_T
 function ActionSlotsBlock({ slots, onAdd, onRemove, onUpdate }) {
   return (
     <div className="space-y-3">
-      <p className="text-[11px] font-bold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
-        Action Slots
-      </p>
+      <div>
+        <div className="flex items-baseline gap-2">
+          <p className="text-[11px] font-bold tracking-widest uppercase" style={{ color: 'var(--text-muted)' }}>
+            Action Slots
+          </p>
+          <span className="text-[10px] font-normal normal-case tracking-normal" style={{ color: 'var(--text-muted)' }}>(Optional)</span>
+        </div>
+        <p className="text-[11px] mt-1 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+          Define specific outreach actions within this phase. Each slot controls the content mode and timing of an individual message — use these when you need more control than the phase-level guidance provides.
+        </p>
+      </div>
 
       {(slots || []).length > 0 && (
         <div className="space-y-2">
@@ -3178,18 +3186,13 @@ function PhaseSlideOut({ phase, onUpdate, onClose, onSave, onAddSlot, onRemoveSl
               value={phase.additionalInstructions || ''} onChange={e => onUpdate({ additionalInstructions: e.target.value })} />
           </div>
 
-          {/* Advanced settings — action slots fully expanded inline (no nesting) */}
-          <div>
-            <p className="text-[11px] font-bold tracking-widest uppercase mb-3" style={{ color: 'var(--text-muted)' }}>
-              Advanced settings
-            </p>
-            <ActionSlotsBlock
-              slots={phase.actionSlots}
-              onAdd={onAddSlot}
-              onRemove={onRemoveSlot}
-              onUpdate={onUpdateSlot}
-            />
-          </div>
+          {/* Action slots — fully expanded inline (no nesting) */}
+          <ActionSlotsBlock
+            slots={phase.actionSlots}
+            onAdd={onAddSlot}
+            onRemove={onRemoveSlot}
+            onUpdate={onUpdateSlot}
+          />
         </div>
 
         {/* Footer */}
