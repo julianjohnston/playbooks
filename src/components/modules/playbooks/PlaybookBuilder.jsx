@@ -2158,7 +2158,7 @@ function ObjectiveStep({ data, onChange }) {
               <span style={{ color: '#ef4444', fontSize: 12, lineHeight: 1 }}>*</span>
             </div>
             <p className="text-[10px] mt-0.5 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
-              Defines the primary intent of this strategy. NBA uses this to prioritize actions and recommend success criteria.
+              Defines the primary intent of this strategy. Tells the agent how to prioritize actions and approach content.
             </p>
           </div>
         </div>
@@ -2171,9 +2171,14 @@ function ObjectiveStep({ data, onChange }) {
         {/* ── Primary Success Events — multi-select, revealed when goal type selected ── */}
         {data.goalType && (
         <div className="mt-4 pt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          <div className="flex items-center gap-1 mb-1.5">
-            <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Primary Success Events</p>
-            <span style={{ color: '#ef4444', fontSize: 12, lineHeight: 1 }}>*</span>
+          <div className="mb-1.5">
+            <div className="flex items-center gap-1">
+              <p className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>Primary Success Events</p>
+              <span style={{ color: '#ef4444', fontSize: 12, lineHeight: 1 }}>*</span>
+            </div>
+            <p className="text-[10px] mt-0.5 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+              The specific events that mark this playbook as successful. When any of these occur, the playbook exits and the objective is considered met.
+            </p>
           </div>
           <div className="relative" ref={successWrapRef}>
             <div className="input-base flex items-center gap-2 cursor-pointer text-xs"
