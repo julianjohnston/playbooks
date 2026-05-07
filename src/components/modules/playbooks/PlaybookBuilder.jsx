@@ -3045,14 +3045,14 @@ function PhaseSlideOut({ phase, onUpdate, onClose, onSave, onAddSlot, onRemoveSl
   if (!phase) return null
   return createPortal(
     <div className="fixed inset-0 z-50 flex justify-end"
-      style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+      style={{ background: 'rgba(0,0,0,0.45)' }}
       onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className="h-full flex flex-col"
-        style={{ width: 640, maxWidth: '100vw', background: 'rgba(18,14,36,0.98)', borderLeft: '1px solid rgba(255,255,255,0.1)', boxShadow: '-12px 0 40px rgba(0,0,0,0.5)' }}>
+        style={{ width: 640, maxWidth: '100vw', background: 'var(--slideout-bg)', borderLeft: '1px solid var(--slideout-border)', boxShadow: '-12px 0 40px rgba(0,0,0,0.5)' }}>
 
         {/* Header */}
         <div className="flex items-center gap-3 px-6 pt-5 pb-4 shrink-0"
-          style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          style={{ borderBottom: '1px solid var(--slideout-border)' }}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
             style={{ background: 'rgba(124,92,252,0.15)', border: '1px solid rgba(124,92,252,0.3)', color: '#a78bfa' }}>
             <Layers size={14} />
@@ -3189,7 +3189,7 @@ function PhaseSlideOut({ phase, onUpdate, onClose, onSave, onAddSlot, onRemoveSl
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 px-6 py-4 shrink-0"
-          style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+          style={{ borderTop: '1px solid var(--slideout-border)' }}>
           <button type="button" onClick={onClose}
             className="px-4 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-70"
             style={{ color: 'var(--text-muted)' }}>
