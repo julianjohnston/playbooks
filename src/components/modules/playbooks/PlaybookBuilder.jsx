@@ -90,6 +90,7 @@ const INITIAL = {
   // Moment
   primaryMoment: '', eventSource: [], businessMeaning: '', qualifyingConditions: [],
   // Hard Gates (all optional — open = active)
+  gate_overrides: [],
   gate_consent_channels: [], gate_consent_ifNotMet: 'Suppress Playbook',
   gate_rep_window: 'Last 24 Hours', gate_rep_ifActive: 'Create Task Instead',
   gate_channel_channels: [], gate_channel_ifNotMet: 'Defer Until Met',
@@ -240,6 +241,7 @@ function isStepDone(stepId, data) {
   if (total > 0) return complete === total
   // Steps with no required fields are "done" when at least one thing is configured
   if (stepId === 'gates') {
+    if (hasAnyTenantGateDefaults()) return true
     return (
       data.gate_consent_channels?.length > 0 ||
       data.gate_channel_channels?.length  > 0 ||
@@ -249,6 +251,11 @@ function isStepDone(stepId, data) {
     )
   }
   return false
+}
+
+function getStepSubtitle(stepId) {
+  if (stepId === 'gates' && hasAnyTenantGateDefaults()) return 'Defaults applied'
+  return ''
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -1418,6 +1425,21 @@ function MomentStep({ data, onChange }) {
   )
 }
 
+// ── Tenant gate defaults ──────────────────────────────────────────────────────
+// Mock representation of tenant-level gate configuration. In production this
+// would come from the tenant settings API.
+const TENANT_GATE_DEFAULTS = {
+  consent:    { configured: true, summary: 'Consent required for SMS and Email — suppress playbook if not met' },
+  rep:        { configured: true, summary: 'Block if rep active in the last 24 hours — create a task instead' },
+  channel:    { configured: true, summary: 'SMS and Email must be available — defer until met' },
+  status:     { configured: true, summary: 'Block churned, suspended, payment past due, and legal hold customers' },
+  compliance: { configured: true, summary: 'DNC, TCPA, and GDPR compliance checks enforced' },
+}
+const USER_CAN_OVERRIDE_GATES = true
+function hasAnyTenantGateDefaults() {
+  return Object.values(TENANT_GATE_DEFAULTS).some(g => g?.configured)
+}
+
 // ── Hard Gates sub-components ─────────────────────────────────────────────────
 function GateCard({ icon: Icon, title, desc, children }) {
   const [open, setOpen] = useState(false)
@@ -1450,6 +1472,246 @@ function GateCard({ icon: Icon, title, desc, children }) {
           <div className="h-px mb-4" style={{ background: 'rgba(255,255,255,0.06)' }} />
           {children}
         </div>
+      )}
+    </div>
+  )
+}
+
+function OverrideConfirmModal({ mode = 'gate-operational', tier, gateTitle, presetLabel, onCancel, onConfirm }) {
+  // Back-compat: tier="legal" maps to mode="gate-legal"
+  const resolved = tier === 'legal' ? 'gate-legal' : (tier === 'operational' ? 'gate-operational' : mode)
+  const [reason, setReason] = useState('')
+  const isLegal = resolved === 'gate-legal'
+  const isTrust = resolved === 'trust'
+  const reasonRequired = isLegal || isTrust
+  const canConfirm = !reasonRequired || reason.trim().length > 0
+
+  const eyebrow = isLegal ? 'Compliance review required'
+                : isTrust ? 'Confirm trust policy override'
+                : 'Confirm tenant override'
+  const heading = isTrust
+    ? `Apply ${presetLabel || 'preset'}`
+    : `Override ${gateTitle || 'gate'}`
+  const bodyText = isLegal
+    ? 'You are overriding a legally sensitive gate. This action will be flagged for compliance review and logged in the audit trail.'
+    : isTrust
+      ? 'You are overriding the tenant-level trust policy for this playbook. This action will be logged in the audit trail.'
+      : 'You are overriding a tenant-level gate setting for this playbook. This action will be logged in the audit trail.'
+  const placeholder = reasonRequired
+    ? (isLegal
+        ? 'Document why this playbook needs to deviate from the legally required default…'
+        : 'Document why this playbook needs a different trust policy…')
+    : 'Optional context for the audit trail…'
+
+  return createPortal(
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+      onMouseDown={e => { if (e.target === e.currentTarget) onCancel() }}>
+      <div className="rounded-2xl flex flex-col"
+        style={{
+          width: 480, maxWidth: '90vw',
+          background: 'var(--slideout-bg)',
+          border: `1px solid ${isLegal ? 'rgba(234,179,8,0.35)' : 'rgba(255,255,255,0.1)'}`,
+          boxShadow: '0 28px 64px rgba(0,0,0,0.65)',
+        }}>
+
+        {/* Header */}
+        <div className="flex items-start gap-3 px-5 pt-5 pb-4"
+          style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+            style={{
+              background: isLegal ? 'rgba(234,179,8,0.15)' : 'rgba(59,130,246,0.15)',
+              border:     `1px solid ${isLegal ? 'rgba(234,179,8,0.35)' : 'rgba(59,130,246,0.3)'}`,
+            }}>
+            {isLegal
+              ? <Shield size={16} style={{ color: '#fbbf24' }} />
+              : <AlertTriangle size={16} style={{ color: '#60a5fa' }} />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest"
+              style={{ color: isLegal ? '#fbbf24' : '#60a5fa' }}>
+              {eyebrow}
+            </p>
+            <p className="text-sm font-bold mt-0.5" style={{ color: 'var(--text-primary)' }}>
+              {heading}
+            </p>
+          </div>
+          <button type="button" onClick={onCancel}
+            className="w-7 h-7 rounded-md flex items-center justify-center hover:opacity-70 transition-opacity shrink-0"
+            style={{ color: 'var(--text-muted)' }}>
+            <X size={15} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4 space-y-4">
+          <p className="text-[12px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+            {bodyText}
+          </p>
+
+          <div>
+            <FieldLabel>
+              Reason for override
+              {!reasonRequired && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> (optional)</span>}
+              {reasonRequired   && <span style={{ color: '#f87171' }}> *</span>}
+            </FieldLabel>
+            <textarea className="input-base w-full text-xs resize-none" rows={3}
+              placeholder={placeholder}
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              autoFocus />
+          </div>
+
+          {isLegal && (
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg"
+              style={{ background: 'rgba(234,179,8,0.06)', border: '1px solid rgba(234,179,8,0.25)' }}>
+              <AlertTriangle size={11} style={{ color: '#fbbf24', flexShrink: 0, marginTop: 2 }} />
+              <p className="text-[11px] leading-relaxed" style={{ color: 'rgba(251,191,36,0.85)' }}>
+                A notification will be sent to your tenant's designated compliance owner once submitted.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 px-5 py-4"
+          style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+          <button type="button" onClick={onCancel}
+            className="px-4 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-70"
+            style={{ color: 'var(--text-muted)' }}>
+            Cancel
+          </button>
+          <button type="button"
+            disabled={!canConfirm}
+            onClick={() => canConfirm && onConfirm(reason.trim())}
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all"
+            style={{
+              background: canConfirm
+                ? (isLegal ? 'linear-gradient(135deg,#d97706,#b45309)' : 'linear-gradient(135deg,#7c5cfc,#3b82f6)')
+                : 'rgba(255,255,255,0.06)',
+              color: canConfirm ? '#fff' : 'var(--text-muted)',
+              cursor: canConfirm ? 'pointer' : 'not-allowed',
+              opacity: canConfirm ? 1 : 0.5,
+              boxShadow: canConfirm ? '0 2px 12px rgba(0,0,0,0.35)' : 'none',
+            }}>
+            Confirm Override
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
+function GateTierSection({ label, desc, accent = 'neutral', children }) {
+  const isWarning = accent === 'warning'
+  return (
+    <div className="rounded-xl px-4 py-4 space-y-3"
+      style={{
+        background:    isWarning ? 'rgba(234,179,8,0.04)'    : 'rgba(255,255,255,0.015)',
+        border: `1px solid ${isWarning ? 'rgba(234,179,8,0.28)' : 'rgba(255,255,255,0.07)'}`,
+      }}>
+      <div className="flex items-center gap-2">
+        {isWarning && <Shield size={12} style={{ color: '#fbbf24', flexShrink: 0 }} />}
+        <p className="text-[10px] font-bold tracking-widest uppercase"
+          style={{ color: isWarning ? '#fbbf24' : 'var(--text-muted)' }}>
+          {label}
+        </p>
+      </div>
+      <p className="text-[11px] leading-relaxed -mt-1"
+        style={{ color: isWarning ? 'rgba(251,191,36,0.85)' : 'var(--text-muted)' }}>
+        {desc}
+      </p>
+      <div className="space-y-3 pt-1">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function InheritedGateCard({ icon: Icon, title, summary, tier = 'operational', overridden, onOverride, onRevert, children }) {
+  const [showConfirm, setShowConfirm] = useState(false)
+  const handleConfirm = (reason) => {
+    const entry = {
+      timestamp: new Date().toISOString(),
+      gate: title,
+      tier,
+      reason: reason || null,
+      complianceFlagged: tier === 'legal',
+    }
+    // Audit-log stub — in production this would post to the audit-log service.
+    // Tier-2 entries additionally notify the tenant compliance owner.
+    // eslint-disable-next-line no-console
+    console.info('[audit-log] gate override', entry)
+    if (tier === 'legal') {
+      // eslint-disable-next-line no-console
+      console.info('[notification] compliance owner notified for', title)
+    }
+    setShowConfirm(false)
+    onOverride()
+  }
+  return (
+    <div className="rounded-xl overflow-hidden transition-all"
+      style={{
+        border: `1px solid ${overridden ? 'rgba(124,92,252,0.4)' : 'rgba(255,255,255,0.08)'}`,
+        background: overridden ? 'rgba(124,92,252,0.05)' : 'rgba(255,255,255,0.02)',
+      }}>
+      <div className="flex items-start gap-3 px-4 py-3.5">
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+          style={{ background: overridden ? 'rgba(124,92,252,0.15)' : 'rgba(34,197,94,0.12)' }}>
+          {overridden
+            ? <Icon size={16} style={{ color: '#a78bfa' }} />
+            : <CheckCircle size={16} style={{ color: '#4ade80' }} />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{title}</p>
+            {overridden ? (
+              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+                style={{ background: 'rgba(124,92,252,0.18)', color: '#a78bfa', border: '1px solid rgba(124,92,252,0.35)' }}>
+                Override active
+              </span>
+            ) : (
+              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
+                style={{ background: 'rgba(34,197,94,0.12)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.3)' }}>
+                Inherited from tenant settings
+              </span>
+            )}
+          </div>
+          {summary && (
+            <p className="text-[11px] leading-relaxed mt-1" style={{ color: 'var(--text-muted)' }}>{summary}</p>
+          )}
+        </div>
+      </div>
+      {overridden && (
+        <div className="px-4 pb-4">
+          <div className="h-px mb-4" style={{ background: 'rgba(255,255,255,0.06)' }} />
+          {children}
+        </div>
+      )}
+      <div className="px-4 pb-3">
+        {overridden ? (
+          <button type="button" onClick={onRevert}
+            className="text-[11px] font-medium transition-colors hover:opacity-70"
+            style={{ color: 'var(--text-muted)' }}>
+            ← Use tenant defaults
+          </button>
+        ) : (
+          <button type="button" onClick={() => setShowConfirm(true)}
+            className="text-[11px] font-medium transition-colors hover:opacity-70"
+            style={{ color: tier === 'legal' ? '#fbbf24' : '#60a5fa' }}>
+            Override for this playbook →
+          </button>
+        )}
+      </div>
+
+      {showConfirm && (
+        <OverrideConfirmModal
+          tier={tier}
+          gateTitle={title}
+          onCancel={() => setShowConfirm(false)}
+          onConfirm={handleConfirm}
+        />
       )}
     </div>
   )
@@ -1893,103 +2155,259 @@ function GatesStep({ data, onChange }) {
   const addCustomGate  = (gate) => set('gate_custom', [...customGates, gate])
   const removeCustomGate = (id) => set('gate_custom', customGates.filter(g => g.id !== id))
 
+  const overrides = data.gate_overrides || []
+  const isOverridden = (id) => overrides.includes(id)
+  const setOverride  = (id, on) => {
+    set('gate_overrides', on ? [...overrides, id] : overrides.filter(x => x !== id))
+  }
+
+  const tenantHasDefaults = hasAnyTenantGateDefaults()
+  const showInheritedView = tenantHasDefaults && USER_CAN_OVERRIDE_GATES
+  const showRestrictedView = tenantHasDefaults && !USER_CAN_OVERRIDE_GATES
+
   return (
     <div className="space-y-4">
 
-      {/* Blue info callout */}
-      <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl"
-        style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)' }}>
-        <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
-          style={{ background: 'rgba(59,130,246,0.25)' }}>
-          <span style={{ color: '#60a5fa', fontSize: 10, fontWeight: 700 }}>i</span>
+      {/* ── Inherited tenant defaults — user has override permission ── */}
+      {showInheritedView && (
+        <>
+          <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl"
+            style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.25)' }}>
+            <CheckCircle size={13} style={{ color: '#4ade80', flexShrink: 0 }} />
+            <p className="text-[11px]" style={{ color: '#86efac' }}>
+              <span style={{ fontWeight: 600, color: '#4ade80' }}>Tenant defaults applied.</span> These gates are inherited from your tenant settings — override individually if this playbook needs different rules.
+            </p>
+          </div>
+
+          <GateTierSection
+            label="Operational Gates"
+            desc="These gates control operational eligibility and can be overridden at the playbook level with justification.">
+            <InheritedGateCard
+              icon={Users} title="Rep Active / Ownership Conflict"
+              summary={TENANT_GATE_DEFAULTS.rep.summary}
+              overridden={isOverridden('rep')}
+              onOverride={() => setOverride('rep', true)}
+              onRevert={() => setOverride('rep', false)}>
+              <GateSelect
+                label="Check Activity Window"
+                value={data.gate_rep_window}
+                onChange={v => set('gate_rep_window', v)}
+                opts={['Last 24 Hours', 'Last 48 Hours', 'Last 7 Days', 'Last 30 Days']}
+              />
+              <div className="mt-3">
+                <GateSelect
+                  label="If Rep Is Active"
+                  value={data.gate_rep_ifActive}
+                  onChange={v => set('gate_rep_ifActive', v)}
+                  opts={['Create Task Instead', 'Skip Playbook', 'Notify Rep', 'Suppress Until Inactive']}
+                />
+              </div>
+            </InheritedGateCard>
+
+            <InheritedGateCard
+              icon={MessageSquare} title="Channel Availability"
+              summary={TENANT_GATE_DEFAULTS.channel.summary}
+              overridden={isOverridden('channel')}
+              onOverride={() => setOverride('channel', true)}
+              onRevert={() => setOverride('channel', false)}>
+              <GateCheckGrid
+                label="Required Available Channels"
+                items={['SMS', 'Email', 'Phone', 'In-App']}
+                selected={data.gate_channel_channels || []}
+                onToggle={val => toggleArr('gate_channel_channels', val)}
+              />
+              <GateSelect
+                label="If Channel Not Available"
+                value={data.gate_channel_ifNotMet}
+                onChange={v => set('gate_channel_ifNotMet', v)}
+                opts={['Defer Until Met', 'Skip Channel Only', 'Suppress Playbook', 'Use Fallback Channel']}
+              />
+            </InheritedGateCard>
+
+            <InheritedGateCard
+              icon={Activity} title="Customer Status Restrictions"
+              summary={TENANT_GATE_DEFAULTS.status.summary}
+              overridden={isOverridden('status')}
+              onOverride={() => setOverride('status', true)}
+              onRevert={() => setOverride('status', false)}>
+              <GateCheckGrid
+                label="Blocked Customer Statuses"
+                items={['Churned', 'Suspended', 'Payment Past Due', 'Legal Hold']}
+                selected={data.gate_status_statuses || []}
+                onToggle={val => toggleArr('gate_status_statuses', val)}
+              />
+              <GateSelect
+                label="If Status Blocked"
+                value={data.gate_status_ifBlocked}
+                onChange={v => set('gate_status_ifBlocked', v)}
+                opts={['Suppress Playbook', 'Defer Execution', 'Notify Account Team', 'Mark Not Eligible']}
+              />
+            </InheritedGateCard>
+          </GateTierSection>
+
+          <GateTierSection
+            accent="warning"
+            label="Legal & Compliance Gates"
+            desc="These gates enforce legal and regulatory requirements. Overrides are subject to compliance review and audit.">
+            <InheritedGateCard
+              tier="legal"
+              icon={UserCheck} title="Consent Required"
+              summary={TENANT_GATE_DEFAULTS.consent.summary}
+              overridden={isOverridden('consent')}
+              onOverride={() => setOverride('consent', true)}
+              onRevert={() => setOverride('consent', false)}>
+              <GateCheckGrid
+                label="Required Consent Channels"
+                items={['SMS', 'Email', 'Phone', 'WhatsApp']}
+                selected={data.gate_consent_channels || []}
+                onToggle={val => toggleArr('gate_consent_channels', val)}
+              />
+              <GateSelect
+                label="If Consent Not Met"
+                value={data.gate_consent_ifNotMet}
+                onChange={v => set('gate_consent_ifNotMet', v)}
+                opts={['Suppress Playbook', 'Skip Channel Only', 'Defer Until Met', 'Log & Continue']}
+              />
+            </InheritedGateCard>
+
+            <InheritedGateCard
+              tier="legal"
+              icon={FileText} title="Compliance Restrictions"
+              summary={TENANT_GATE_DEFAULTS.compliance.summary}
+              overridden={isOverridden('compliance')}
+              onOverride={() => setOverride('compliance', true)}
+              onRevert={() => setOverride('compliance', false)}>
+              <GateCheckGrid
+                label="Compliance Checks"
+                items={[
+                  'Respect Do Not Call (DNC) Registry',
+                  'Require TCPA Compliance for SMS/Calls',
+                  'Check GDPR Opt-Out Status',
+                ]}
+                selected={data.gate_compliance_checks || []}
+                onToggle={val => toggleArr('gate_compliance_checks', val)}
+                cols={1}
+              />
+            </InheritedGateCard>
+          </GateTierSection>
+        </>
+      )}
+
+      {/* ── Restricted user view — defaults exist, no override permission ── */}
+      {showRestrictedView && (
+        <div className="flex items-start gap-3 px-4 py-4 rounded-xl"
+          style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.25)' }}>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+            style={{ background: 'rgba(59,130,246,0.15)' }}>
+            <Lock size={14} style={{ color: '#60a5fa' }} />
+          </div>
+          <p className="text-[12px] leading-relaxed" style={{ color: '#bfdbfe' }}>
+            Compliance and consent rules are managed by your administrator and apply to this playbook automatically.
+          </p>
         </div>
-        <p className="text-[11px]" style={{ color: '#93c5fd' }}>
-          <span style={{ fontWeight: 600, color: '#60a5fa' }}>All gates are optional.</span> Enable only the constraints your
-          playbook truly requires. More gates = more restrictive eligibility.
-        </p>
-      </div>
+      )}
 
-      {/* ── Gate 1: Consent Required ── */}
-      <GateCard icon={UserCheck} title="Consent Required" desc="Require customer consent for specific channels">
-        <GateCheckGrid
-          label="Required Consent Channels"
-          items={['SMS', 'Email', 'Phone', 'WhatsApp']}
-          selected={data.gate_consent_channels || []}
-          onToggle={val => toggleArr('gate_consent_channels', val)}
-        />
-        <GateSelect
-          label="If Consent Not Met"
-          value={data.gate_consent_ifNotMet}
-          onChange={v => set('gate_consent_ifNotMet', v)}
-          opts={['Suppress Playbook', 'Skip Channel Only', 'Defer Until Met', 'Log & Continue']}
-        />
-      </GateCard>
+      {/* ── No tenant defaults — original expandable gate cards ── */}
+      {!tenantHasDefaults && (
+        <>
+          <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl"
+            style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)' }}>
+            <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
+              style={{ background: 'rgba(59,130,246,0.25)' }}>
+              <span style={{ color: '#60a5fa', fontSize: 10, fontWeight: 700 }}>i</span>
+            </div>
+            <p className="text-[11px]" style={{ color: '#93c5fd' }}>
+              <span style={{ fontWeight: 600, color: '#60a5fa' }}>All gates are optional.</span> Enable only the constraints your
+              playbook truly requires. More gates = more restrictive eligibility.
+            </p>
+          </div>
 
-      {/* ── Gate 2: Rep Active / Ownership Conflict ── */}
-      <GateCard icon={Users} title="Rep Active / Ownership Conflict" desc="Block if rep is actively working this customer">
-        <GateSelect
-          label="Check Activity Window"
-          value={data.gate_rep_window}
-          onChange={v => set('gate_rep_window', v)}
-          opts={['Last 24 Hours', 'Last 48 Hours', 'Last 7 Days', 'Last 30 Days']}
-        />
-        <div className="mt-3">
-          <GateSelect
-            label="If Rep Is Active"
-            value={data.gate_rep_ifActive}
-            onChange={v => set('gate_rep_ifActive', v)}
-            opts={['Create Task Instead', 'Skip Playbook', 'Notify Rep', 'Suppress Until Inactive']}
-          />
-        </div>
-      </GateCard>
+          <GateTierSection
+            label="Operational Gates"
+            desc="These gates control operational eligibility and can be overridden at the playbook level with justification.">
+            <GateCard icon={Users} title="Rep Active / Ownership Conflict" desc="Block if rep is actively working this customer">
+              <GateSelect
+                label="Check Activity Window"
+                value={data.gate_rep_window}
+                onChange={v => set('gate_rep_window', v)}
+                opts={['Last 24 Hours', 'Last 48 Hours', 'Last 7 Days', 'Last 30 Days']}
+              />
+              <div className="mt-3">
+                <GateSelect
+                  label="If Rep Is Active"
+                  value={data.gate_rep_ifActive}
+                  onChange={v => set('gate_rep_ifActive', v)}
+                  opts={['Create Task Instead', 'Skip Playbook', 'Notify Rep', 'Suppress Until Inactive']}
+                />
+              </div>
+            </GateCard>
 
-      {/* ── Gate 3: Channel Availability ── */}
-      <GateCard icon={MessageSquare} title="Channel Availability" desc="Require specific communication channels to be available">
-        <GateCheckGrid
-          label="Required Available Channels"
-          items={['SMS', 'Email', 'Phone', 'In-App']}
-          selected={data.gate_channel_channels || []}
-          onToggle={val => toggleArr('gate_channel_channels', val)}
-        />
-        <GateSelect
-          label="If Channel Not Available"
-          value={data.gate_channel_ifNotMet}
-          onChange={v => set('gate_channel_ifNotMet', v)}
-          opts={['Defer Until Met', 'Skip Channel Only', 'Suppress Playbook', 'Use Fallback Channel']}
-        />
-      </GateCard>
+            <GateCard icon={MessageSquare} title="Channel Availability" desc="Require specific communication channels to be available">
+              <GateCheckGrid
+                label="Required Available Channels"
+                items={['SMS', 'Email', 'Phone', 'In-App']}
+                selected={data.gate_channel_channels || []}
+                onToggle={val => toggleArr('gate_channel_channels', val)}
+              />
+              <GateSelect
+                label="If Channel Not Available"
+                value={data.gate_channel_ifNotMet}
+                onChange={v => set('gate_channel_ifNotMet', v)}
+                opts={['Defer Until Met', 'Skip Channel Only', 'Suppress Playbook', 'Use Fallback Channel']}
+              />
+            </GateCard>
 
-      {/* ── Gate 4: Customer Status Restrictions ── */}
-      <GateCard icon={Activity} title="Customer Status Restrictions" desc="Block customers with specific statuses">
-        <GateCheckGrid
-          label="Blocked Customer Statuses"
-          items={['Churned', 'Suspended', 'Payment Past Due', 'Legal Hold']}
-          selected={data.gate_status_statuses || []}
-          onToggle={val => toggleArr('gate_status_statuses', val)}
-        />
-        <GateSelect
-          label="If Status Blocked"
-          value={data.gate_status_ifBlocked}
-          onChange={v => set('gate_status_ifBlocked', v)}
-          opts={['Suppress Playbook', 'Defer Execution', 'Notify Account Team', 'Mark Not Eligible']}
-        />
-      </GateCard>
+            <GateCard icon={Activity} title="Customer Status Restrictions" desc="Block customers with specific statuses">
+              <GateCheckGrid
+                label="Blocked Customer Statuses"
+                items={['Churned', 'Suspended', 'Payment Past Due', 'Legal Hold']}
+                selected={data.gate_status_statuses || []}
+                onToggle={val => toggleArr('gate_status_statuses', val)}
+              />
+              <GateSelect
+                label="If Status Blocked"
+                value={data.gate_status_ifBlocked}
+                onChange={v => set('gate_status_ifBlocked', v)}
+                opts={['Suppress Playbook', 'Defer Execution', 'Notify Account Team', 'Mark Not Eligible']}
+              />
+            </GateCard>
+          </GateTierSection>
 
-      {/* ── Gate 6: Compliance Restrictions ── */}
-      <GateCard icon={FileText} title="Compliance Restrictions" desc="Enforce legal and compliance requirements">
-        <GateCheckGrid
-          label="Compliance Checks"
-          items={[
-            'Respect Do Not Call (DNC) Registry',
-            'Require TCPA Compliance for SMS/Calls',
-            'Check GDPR Opt-Out Status',
-          ]}
-          selected={data.gate_compliance_checks || []}
-          onToggle={val => toggleArr('gate_compliance_checks', val)}
-          cols={1}
-        />
-        {/* "If not met" behavior — coming in next iteration */}
-      </GateCard>
+          <GateTierSection
+            accent="warning"
+            label="Legal & Compliance Gates"
+            desc="These gates enforce legal and regulatory requirements. Overrides are subject to compliance review and audit.">
+            <GateCard icon={UserCheck} title="Consent Required" desc="Require customer consent for specific channels">
+              <GateCheckGrid
+                label="Required Consent Channels"
+                items={['SMS', 'Email', 'Phone', 'WhatsApp']}
+                selected={data.gate_consent_channels || []}
+                onToggle={val => toggleArr('gate_consent_channels', val)}
+              />
+              <GateSelect
+                label="If Consent Not Met"
+                value={data.gate_consent_ifNotMet}
+                onChange={v => set('gate_consent_ifNotMet', v)}
+                opts={['Suppress Playbook', 'Skip Channel Only', 'Defer Until Met', 'Log & Continue']}
+              />
+            </GateCard>
+
+            <GateCard icon={FileText} title="Compliance Restrictions" desc="Enforce legal and compliance requirements">
+              <GateCheckGrid
+                label="Compliance Checks"
+                items={[
+                  'Respect Do Not Call (DNC) Registry',
+                  'Require TCPA Compliance for SMS/Calls',
+                  'Check GDPR Opt-Out Status',
+                ]}
+                selected={data.gate_compliance_checks || []}
+                onToggle={val => toggleArr('gate_compliance_checks', val)}
+                cols={1}
+              />
+            </GateCard>
+          </GateTierSection>
+        </>
+      )}
 
       {/* ── Custom Gates ── */}
       <div className="rounded-xl overflow-hidden"
@@ -4447,78 +4865,86 @@ function TrustStep({ data, onChange }) {
       label: 'Tenant Defaults',
       sub: "Uses your organization's default guardrails from tenant settings",
       icon: Globe,
-      personalizationLevel: 1,
       traits: [
         { icon: Eye,          text: 'Draft for Review'   },
         { icon: Activity,     text: '75% Confidence'     },
         { icon: Shield,       text: 'All Topics Enabled' },
-        { icon: User,         text: 'Personalization L1' },
       ],
-      config: { trustMode: 'draft', confidenceThreshold: 75, handoffBehavior: 'Create Task', requireApprovalBelow: true,
-                personalizationFields: ['name', 'vehicle_interest', 'assigned_bdc', 'source'] },
+      config: { trustMode: 'draft', confidenceThreshold: 75, handoffBehavior: 'Create Task', requireApprovalBelow: true },
     },
     {
       id: 'conservative',
       label: 'Conservative',
       sub: 'Maximum human oversight — all actions require approval',
       icon: Shield,
-      personalizationLevel: 1,
       traits: [
         { icon: Lock,         text: 'Approval Required'    },
         { icon: Activity,     text: '85% Confidence'       },
         { icon: AlertTriangle,text: 'Strictest Guardrails' },
-        { icon: User,         text: 'Personalization L1'   },
       ],
-      config: { trustMode: 'approval', confidenceThreshold: 85, handoffBehavior: 'Escalate', requireApprovalBelow: true,
-                personalizationFields: ['name', 'vehicle_interest', 'assigned_bdc', 'source'] },
+      config: { trustMode: 'approval', confidenceThreshold: 85, handoffBehavior: 'Escalate', requireApprovalBelow: true },
     },
     {
       id: 'balanced',
       label: 'Balanced',
       sub: 'Good mix of automation and human review',
       icon: BarChart2,
-      personalizationLevel: 2,
       traits: [
         { icon: Eye,      text: 'Draft for Review'   },
         { icon: Activity, text: '70% Confidence'     },
-        { icon: User,     text: 'Personalization L2' },
       ],
-      config: { trustMode: 'draft', confidenceThreshold: 70, handoffBehavior: 'Create Task', requireApprovalBelow: true,
-                personalizationFields: ['name', 'vehicle_interest', 'assigned_bdc', 'source', 'hobbies', 'proximity', 'upcoming_service', 'current_vehicle'] },
+      config: { trustMode: 'draft', confidenceThreshold: 70, handoffBehavior: 'Create Task', requireApprovalBelow: true },
     },
     {
       id: 'aggressive',
       label: 'Aggressive',
       sub: 'More automation with less manual review',
       icon: Zap,
-      personalizationLevel: 2,
       traits: [
         { icon: Zap,      text: 'Auto-Send'          },
         { icon: Activity, text: '60% Confidence'     },
-        { icon: User,     text: 'Personalization L2' },
       ],
-      config: { trustMode: 'auto-send', confidenceThreshold: 60, handoffBehavior: 'None', requireApprovalBelow: false,
-                personalizationFields: ['name', 'vehicle_interest', 'assigned_bdc', 'source', 'hobbies', 'proximity', 'upcoming_service', 'current_vehicle', 'current_products'] },
+      config: { trustMode: 'auto-send', confidenceThreshold: 60, handoffBehavior: 'None', requireApprovalBelow: false },
     },
     {
       id: 'auto-pilot',
       label: 'Auto Pilot',
       sub: 'Maximum automation — minimal human intervention',
       icon: PlayCircle,
-      personalizationLevel: 3,
       traits: [
         { icon: Zap,      text: 'Auto-Send'          },
         { icon: Activity, text: '50% Confidence'     },
-        { icon: User,     text: 'Personalization L3' },
       ],
-      config: { trustMode: 'auto-send', confidenceThreshold: 50, handoffBehavior: 'None', requireApprovalBelow: false,
-                personalizationFields: ['name', 'vehicle_interest', 'assigned_bdc', 'source', 'hobbies', 'proximity', 'upcoming_service', 'current_vehicle', 'current_products', 'regional_lang', 'family_info', 'activity_history', 'relationship'] },
+      config: { trustMode: 'auto-send', confidenceThreshold: 50, handoffBehavior: 'None', requireApprovalBelow: false },
     },
   ]
 
   const TRUST_MODE_LABELS = { draft: 'Draft for Review', 'auto-send': 'Auto-Send', approval: 'Approval Required' }
 
   const applyPreset = (preset) => onChange({ ...data, trustPreset: preset.id, ...preset.config })
+
+  const [pendingPreset, setPendingPreset] = useState(null)
+  const requestApplyPreset = (preset) => {
+    if (data.trustPreset === preset.id) return
+    if (preset.id === 'tenant-defaults') {
+      applyPreset(preset)
+      return
+    }
+    setPendingPreset(preset)
+  }
+  const confirmApplyPreset = (reason) => {
+    if (!pendingPreset) return
+    // Audit-log stub — in production this would post to the audit-log service.
+    // eslint-disable-next-line no-console
+    console.info('[audit-log] trust policy override', {
+      timestamp: new Date().toISOString(),
+      preset: pendingPreset.id,
+      presetLabel: pendingPreset.label,
+      reason,
+    })
+    applyPreset(pendingPreset)
+    setPendingPreset(null)
+  }
 
   const threshold = data.confidenceThreshold ?? 75
 
@@ -4537,7 +4963,7 @@ function TrustStep({ data, onChange }) {
     const selected = data.trustPreset === preset.id
     const Icon = preset.icon
     return (
-      <button key={preset.id} type="button" onClick={() => applyPreset(preset)}
+      <button key={preset.id} type="button" onClick={() => requestApplyPreset(preset)}
         className="flex flex-col gap-2.5 p-4 rounded-xl text-left transition-all w-full"
         style={{
           background: selected ? 'rgba(37,99,235,0.08)' : 'rgba(255,255,255,0.02)',
@@ -4622,19 +5048,11 @@ function TrustStep({ data, onChange }) {
                 <p className="text-[10px] font-bold" style={{ color: 'var(--text-secondary)' }}>Current Configuration</p>
               </div>
               {(() => {
-                const pFields = data.personalizationFields || []
-                const L3_IDS = ['regional_lang','family_info','hobbies','relationship']
-                const L2_IDS = ['activity_history','proximity','upcoming_service','current_vehicle','current_products']
-                const pLevel = pFields.some(f => L3_IDS.includes(f)) ? 3
-                             : pFields.some(f => L2_IDS.includes(f)) ? 2 : 1
-                const pLevelColor = pLevel === 3 ? '#f472b6' : pLevel === 2 ? '#60a5fa' : '#4ade80'
                 const cfgItems = [
                   { label: 'Trust Mode',            val: TRUST_MODE_LABELS[data.trustMode] || data.trustMode || '—' },
                   { label: 'Confidence Threshold',  val: `${threshold}%` },
                   { label: 'Sensitive Topics',       val: `${(data.sensitiveTopics || []).filter(t => t.enabled).length} of ${(data.sensitiveTopics || []).length} enabled` },
                   { label: 'Handoff Behavior',       val: data.handoffBehavior || '—' },
-                  { label: 'Personalization Level',  val: `Level ${pLevel}`, color: pLevelColor },
-                  { label: 'Data Fields Enabled',    val: `${pFields.length} field${pFields.length !== 1 ? 's' : ''}` },
                 ]
                 return (
                   <div className="grid grid-cols-2">
@@ -5102,6 +5520,15 @@ function TrustStep({ data, onChange }) {
           </div>
         </div>
       </div>
+
+      {pendingPreset && (
+        <OverrideConfirmModal
+          mode="trust"
+          presetLabel={pendingPreset.label}
+          onCancel={() => setPendingPreset(null)}
+          onConfirm={confirmApplyPreset}
+        />
+      )}
 
     </div>
   )
@@ -5682,10 +6109,11 @@ function TopStepper({ currentIndex, steps, data, onJump }) {
     <div className="flex items-center gap-1 px-8 py-3 shrink-0 overflow-x-auto"
       style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.01)' }}>
       {steps.map((step, i) => {
-        const done    = isStepDone(step.id, data)
-        const active  = i === currentIndex
-        const past    = i < currentIndex
-        const Icon    = step.icon
+        const done     = isStepDone(step.id, data)
+        const active   = i === currentIndex
+        const past     = i < currentIndex
+        const Icon     = step.icon
+        const subtitle = getStepSubtitle(step.id, data)
 
         return (
           <React.Fragment key={step.id}>
@@ -5704,7 +6132,15 @@ function TopStepper({ currentIndex, steps, data, onJump }) {
                     style={{ background: active ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)' }}>
                     {i + 1}
                   </span>}
-              {step.label}
+              <span className="flex flex-col items-start leading-tight">
+                <span>{step.label}</span>
+                {subtitle && (
+                  <span className="text-[9px] font-medium mt-0.5"
+                    style={{ color: active ? 'rgba(255,255,255,0.75)' : '#4ade80', opacity: active ? 1 : 0.85 }}>
+                    {subtitle}
+                  </span>
+                )}
+              </span>
             </button>
             {i < steps.length - 1 && (
               <ChevronRight size={12} style={{ color: 'rgba(255,255,255,0.18)', flexShrink: 0 }} />
